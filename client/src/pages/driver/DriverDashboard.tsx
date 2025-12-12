@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DriverLayout } from "@/components/layout/AppShell";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
 import { TitanInput } from "@/components/titan-ui/Input";
+import { DocumentsPopup } from "@/components/driver/DocumentsPopup";
 import { Search, Clock, ChevronRight, AlertTriangle, Truck, Plus, History, WifiOff, Fuel, AlertOctagon } from "lucide-react";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
@@ -21,9 +23,22 @@ export default function DriverDashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
+  const [showDocsPopup, setShowDocsPopup] = useState(true);
 
   const user = session.getUser();
   const company = session.getCompany();
+
+  const { data: unreadDocs } = useQuery({
+    queryKey: ["unread-documents", company?.id, user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/documents/unread?companyId=${company?.id}&userId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch documents");
+      return res.json();
+    },
+    enabled: !!company?.id && !!user?.id,
+  });
+
+  const hasUnreadDocs = unreadDocs && unreadDocs.length > 0;
 
   useEffect(() => {
     if (company && user) {
@@ -198,6 +213,10 @@ export default function DriverDashboard() {
              </div>
         </section>
       </div>
+
+      {hasUnreadDocs && showDocsPopup && (
+        <DocumentsPopup onClose={() => setShowDocsPopup(false)} />
+      )}
     </DriverLayout>
   );
 }

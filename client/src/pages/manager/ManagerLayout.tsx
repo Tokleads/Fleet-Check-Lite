@@ -11,7 +11,8 @@ import {
   X,
   LogOut,
   Search,
-  Bell
+  Bell,
+  FileText
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { TitanButton } from "@/components/titan-ui/Button";
@@ -23,6 +24,7 @@ const navItems = [
   { path: "/manager/defects", icon: AlertTriangle, label: "Defects" },
   { path: "/manager/fuel", icon: Fuel, label: "Fuel Log" },
   { path: "/manager/fleet", icon: Truck, label: "Fleet" },
+  { path: "/manager/documents", icon: FileText, label: "Documents" },
   { path: "/manager/settings", icon: Settings, label: "Settings" },
 ];
 
