@@ -16,6 +16,7 @@ import ManagerFuelLog from "@/pages/manager/FuelLog";
 import ManagerFleet from "@/pages/manager/Fleet";
 import ManagerSettings from "@/pages/manager/Settings";
 import ManagerDocuments from "@/pages/manager/Documents";
+import ManagerLicense from "@/pages/manager/License";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/manager/fuel" component={ManagerFuelLog} />
       <Route path="/manager/fleet" component={ManagerFleet} />
       <Route path="/manager/documents" component={ManagerDocuments} />
+      <Route path="/manager/license" component={ManagerLicense} />
       <Route path="/manager/settings" component={ManagerSettings} />
       <Route component={NotFound} />
     </Switch>

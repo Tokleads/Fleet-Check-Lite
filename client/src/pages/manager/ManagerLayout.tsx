@@ -13,7 +13,8 @@ import {
   Search,
   Bell,
   FileText,
-  User
+  User,
+  Shield
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
@@ -25,6 +26,7 @@ const navItems = [
   { path: "/manager/fuel", icon: Fuel, label: "Fuel Log" },
   { path: "/manager/fleet", icon: Truck, label: "Fleet" },
   { path: "/manager/documents", icon: FileText, label: "Documents" },
+  { path: "/manager/license", icon: Shield, label: "License" },
   { path: "/manager/settings", icon: Settings, label: "Settings" },
 ];
 

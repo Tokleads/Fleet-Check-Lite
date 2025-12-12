@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema } from "@shared/schema";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
 
@@ -342,8 +342,29 @@ export async function registerRoutes(
   app.post("/api/manager/vehicles", async (req, res) => {
     try {
       const validated = insertVehicleSchema.parse(req.body);
+      
+      // Check vehicle usage limits before creating
+      const usage = await storage.getVehicleUsage(validated.companyId);
+      
+      if (usage.state === 'over_hard_limit') {
+        return res.status(403).json({ 
+          error: "Vehicle capacity exceeded — request upgrade to add more vehicles.",
+          usage 
+        });
+      }
+      
       const vehicle = await storage.createVehicle(validated);
-      res.status(201).json(vehicle);
+      
+      // Return with warning if at limit or in grace
+      if (usage.state === 'at_limit' || usage.state === 'in_grace') {
+        return res.status(201).json({ 
+          vehicle, 
+          warning: 'grace_active',
+          usage 
+        });
+      }
+      
+      res.status(201).json({ vehicle });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });
@@ -381,6 +402,43 @@ export async function registerRoutes(
       const userList = await storage.getUsersByCompany(Number(req.params.companyId));
       res.json(userList);
     } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== LICENSE API ROUTES ====================
+
+  // Get license info and vehicle usage
+  app.get("/api/company/license/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const company = await storage.getCompanyById(companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      const usage = await storage.getVehicleUsage(companyId);
+      
+      res.json({
+        tier: company.licenseTier,
+        tierDisplay: company.licenseTier === 'core' ? 'Core' : company.licenseTier === 'pro' ? 'Pro' : 'Operator',
+        ...usage
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Request license upgrade
+  app.post("/api/company/license/request-upgrade", async (req, res) => {
+    try {
+      const validated = insertLicenseUpgradeRequestSchema.parse(req.body);
+      const request = await storage.createLicenseUpgradeRequest(validated);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

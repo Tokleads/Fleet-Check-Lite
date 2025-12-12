@@ -4,12 +4,16 @@ import { companies, users, vehicles } from "@shared/schema";
 async function seed() {
   console.log("🌱 Seeding database...");
 
-  // Create demo company
+  // Create demo company with Core tier (15 vehicle allowance + 3 grace)
   const [company] = await db.insert(companies).values({
     companyCode: "APEX",
     name: "DC European Haulage Ltd",
     logoUrl: "/dc-european-logo.png",
     primaryColor: "#4169b2",
+    licenseTier: "core",
+    vehicleAllowance: 15,
+    graceOverage: 3,
+    enforcementMode: "soft_block",
     settings: {
       poolFleet: true,
       showFuelPrices: false,
@@ -53,7 +57,7 @@ async function seed() {
 
   console.log(`✅ Created users: ${manager.name}, ${driver1.name}, ${driver2.name}`);
 
-  // Create vehicles
+  // Create 16 vehicles (1 over allowance of 15, demonstrating grace mode)
   const vehicleData = [
     { vrm: "KX65ABC", make: "DAF", model: "XF 530", fleetNumber: "F001", motDue: new Date("2025-11-20") },
     { vrm: "LR19XYZ", make: "Scania", model: "R450", fleetNumber: "F002", motDue: new Date("2025-06-15") },
@@ -69,7 +73,8 @@ async function seed() {
     { vrm: "QW21XYZ", make: "Renault", model: "T High", fleetNumber: "F012", motDue: new Date("2025-11-03") },
     { vrm: "ZX19ABC", make: "DAF", model: "LF", fleetNumber: "F013", motDue: new Date("2025-06-30") },
     { vrm: "CV22DEF", make: "Scania", model: "P320", fleetNumber: "F014", motDue: new Date("2025-09-20") },
-    { vrm: "BN20GHI", make: "Iveco", model: "Eurocargo", fleetNumber: "F015", motDue: new Date("2025-12-25") }
+    { vrm: "BN20GHI", make: "Iveco", model: "Eurocargo", fleetNumber: "F015", motDue: new Date("2025-12-25") },
+    { vrm: "HJ23KLM", make: "DAF", model: "XG+", fleetNumber: "F016", motDue: new Date("2026-01-15") }
   ];
 
   for (const v of vehicleData) {
@@ -79,13 +84,16 @@ async function seed() {
     });
   }
 
-  console.log(`✅ Created ${vehicleData.length} vehicles`);
+  console.log(`✅ Created ${vehicleData.length} vehicles (1 in grace - over 15 allowance)`);
   console.log("\n🎉 Seed completed!");
   console.log(`\n📋 Login credentials:`);
   console.log(`   Company Code: APEX`);
   console.log(`   Driver 1: ${driver1.email} (PIN: 1234)`);
   console.log(`   Driver 2: ${driver2.email} (PIN: 5678)`);
   console.log(`   Manager: ${manager.email} (PIN: 0000)`);
+  console.log(`\n📊 License info:`);
+  console.log(`   Tier: Core (15 vehicles + 3 grace)`);
+  console.log(`   Active vehicles: 16 (in grace mode)`);
   
   process.exit(0);
 }
