@@ -66,11 +66,11 @@ export default function ManagerFuelLog() {
             <p className="text-slate-500 mt-0.5">Diesel and AdBlue fill-ups (last 30 days)</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-fuel-filters">
               <Filter className="h-4 w-4" />
               Filters
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-fuel-export">
               <Download className="h-4 w-4" />
               Export CSV
             </button>

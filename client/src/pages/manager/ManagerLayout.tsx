@@ -101,6 +101,7 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
         <button 
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="absolute -right-3 top-20 h-6 w-6 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-shadow z-10"
+          data-testid="button-toggle-sidebar"
         >
           {sidebarOpen ? (
             <ChevronLeft className="h-3.5 w-3.5 text-slate-500" />

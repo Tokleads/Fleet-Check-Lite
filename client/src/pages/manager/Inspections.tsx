@@ -74,11 +74,11 @@ export default function ManagerInspections() {
             <p className="text-slate-500 mt-0.5">All vehicle inspection records</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-inspections-filters">
               <Filter className="h-4 w-4" />
               Filters
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-inspections-export">
               <Download className="h-4 w-4" />
               Export CSV
             </button>
@@ -175,7 +175,7 @@ export default function ManagerInspections() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors">
+                        <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors" data-testid={`button-view-inspection-${inspection.id}`}>
                           <Eye className="h-4 w-4 text-slate-400" />
                         </button>
                       </td>
@@ -196,6 +196,7 @@ export default function ManagerInspections() {
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
                 className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                data-testid="button-inspections-prev-page"
               >
                 <ChevronLeft className="h-4 w-4 text-slate-600" />
               </button>
@@ -204,6 +205,7 @@ export default function ManagerInspections() {
                 onClick={() => setPage(p => p + 1)}
                 disabled={(inspections?.length || 0) < pageSize}
                 className="h-9 w-9 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                data-testid="button-inspections-next-page"
               >
                 <ChevronRight className="h-4 w-4 text-slate-600" />
               </button>

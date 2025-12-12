@@ -65,7 +65,7 @@ export default function ManagerFleet() {
             <h1 className="text-2xl font-bold text-slate-900">Fleet</h1>
             <p className="text-slate-500 mt-0.5">Manage vehicles and trailers</p>
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm" data-testid="button-add-vehicle">
             <Plus className="h-4 w-4" />
             Add Vehicle
           </button>
@@ -117,7 +117,7 @@ export default function ManagerFleet() {
                         <p className="text-xs text-slate-500">{vehicle.fleetNumber || 'No fleet #'}</p>
                       </div>
                     </div>
-                    <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-vehicle-menu-${vehicle.id}`}>
                       <MoreVertical className="h-4 w-4 text-slate-400" />
                     </button>
                   </div>

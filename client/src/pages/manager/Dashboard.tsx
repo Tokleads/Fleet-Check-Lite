@@ -66,9 +66,9 @@ function KPICard({
   );
 }
 
-function QuickAction({ icon: Icon, label, count, color }: { icon: React.ElementType; label: string; count?: number; color: string }) {
+function QuickAction({ icon: Icon, label, count, color, testId }: { icon: React.ElementType; label: string; count?: number; color: string; testId: string }) {
   return (
-    <button className="flex items-center gap-3 p-4 bg-white rounded-xl border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all group">
+    <button className="flex items-center gap-3 p-4 bg-white rounded-xl border border-slate-200/60 hover:border-slate-300 hover:shadow-sm transition-all group" data-testid={testId}>
       <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${color}`}>
         <Icon className="h-5 w-5" />
       </div>
@@ -286,23 +286,27 @@ export default function ManagerDashboard() {
                 label="Review Open Defects" 
                 count={openDefectsCount}
                 color="bg-amber-100 text-amber-600"
+                testId="button-quick-action-defects"
               />
               <QuickAction 
                 icon={ClipboardCheck} 
                 label="Today's Inspections" 
                 count={stats?.inspectionsToday || 0}
                 color="bg-blue-100 text-blue-600"
+                testId="button-quick-action-inspections"
               />
               <QuickAction 
                 icon={Fuel} 
                 label="Fuel Entries" 
                 color="bg-purple-100 text-purple-600"
+                testId="button-quick-action-fuel"
               />
               <QuickAction 
                 icon={Truck} 
                 label="Fleet Overview" 
                 count={stats?.totalVehicles || 0}
                 color="bg-emerald-100 text-emerald-600"
+                testId="button-quick-action-fleet"
               />
             </div>
           </div>
