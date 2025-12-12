@@ -1,0 +1,128 @@
+Yep — what you’ve got is “clean”, but it reads as **default SaaS template** (flat card, generic spacing, weak hierarchy). FleetCheck feels higher quality because it nails 4 things: **typography system, depth/layers, component polish, and micro-interaction**.
+
+Here’s how to get yours to that level, fast.
+
+## What’s making your screen look “cheap” (and how to fix it)
+
+### 1) Typography + hierarchy (biggest win)
+
+Right now everything is similar weight/size, so it feels bland.
+
+* Use a **modern UI font** (Inter / SF / Plus Jakarta / Manrope).
+* Make the headline either **smaller + tighter** (more “product”) or **bigger + bolder** (more “brand”) — not in the middle.
+* Add a real type scale:
+
+  * H1 36–44 / semibold
+  * H2 18–20 / medium
+  * Body 14–16 / regular
+  * Labels 12–13 / medium (uppercase optional)
+
+### 2) Depth + surfaces (FleetCheck “feels” expensive)
+
+Your card shadow/border is too subtle and everything sits on one plane.
+
+* Add a **soft background gradient** (not pure grey).
+* Use layered surfaces:
+
+  * Page background: subtle gradient
+  * Card: white with **stronger shadow + slightly darker border**
+  * Inputs: slightly tinted background, not pure white
+
+Example direction:
+
+* Card: `border: 1px solid rgba(15,23,42,.08)`
+* Shadow: `0 20px 60px rgba(15,23,42,.10)` + `0 2px 8px rgba(15,23,42,.06)`
+
+### 3) Components: make them “touchable”
+
+Your role tiles look like plain divs.
+
+* Make “Driver/Manager” a **segmented control** or **select cards** with:
+
+  * hover lift (`translateY(-1px)`)
+  * selected state: subtle tint + border + checkmark
+  * focus ring that matches brand
+
+Also: your dropdown looks default. Upgrade it:
+
+* Larger hit area (48–52px height)
+* Clear caret icon, better padding
+* Placeholder + helper text + error state
+
+### 4) Spacing + alignment
+
+FleetCheck uses a strict grid.
+
+* Use an **8px spacing system** only (8/16/24/32/40).
+* Tighten vertical whitespace above the card (your hero area is too tall).
+* Keep max width ~ **440–480px** for the login card (yours is a bit wide/loose).
+
+### 5) Micro-interactions (instant “premium”)
+
+* Button: press animation + loading state
+* Dropdown: smooth open, search inside
+* Role selection: animated highlight
+* Page load: subtle fade-in
+
+---
+
+## The exact UI direction I’d give Replit (copy/paste prompt)
+
+Paste this into Replit Agent **as a new instruction** (it will refactor your UI):
+
+**Prompt: Premium UI/UX Refactor (FleetCheck-level polish)**
+Build the login/role selection screen to feel like a premium enterprise mobile-first product (FleetCheck quality). Implement a design system and refactor the existing UI accordingly.
+
+**Design requirements**
+
+* Use a modern UI font (Inter preferred). Establish a type scale and apply it consistently.
+* Use an 8px spacing grid everywhere.
+* Create design tokens (CSS variables):
+  `--bg`, `--surface`, `--surface-2`, `--text`, `--muted`, `--border`, `--primary`, `--primary-foreground`, `--radius`, `--shadow`.
+* Add a subtle background gradient and layered surfaces (page background ≠ card ≠ inputs).
+* Add consistent focus rings and hover/pressed states (keyboard accessible).
+* Cards and inputs must look “touchable”: 48–52px controls, generous padding, clean borders, premium shadows.
+
+**Component improvements**
+
+* Replace role selection with a proper “select card group” component:
+
+  * two tiles Driver/Manager
+  * hover lift
+  * selected state (tinted background + border + check icon)
+  * accessible radio semantics
+* Company selector:
+
+  * searchable dropdown
+  * clear empty state + loading state
+  * consistent spacing and typography
+* Primary CTA button:
+
+  * full-width, 52px height
+  * loading spinner + disabled state
+  * subtle press animation
+
+**Layout requirements**
+
+* Centered login panel max width 460px.
+* Reduce excessive top whitespace; logo + title block should be tighter and balanced.
+* Ensure perfect alignment and consistent vertical rhythm (no arbitrary gaps).
+
+**Deliverables**
+
+* Update the UI components, tokens, and styles.
+* Keep functionality identical; only upgrade UX + visual polish.
+* Provide a reusable `ThemeProvider` / tokens file so future pages match this standard.
+
+---
+
+## If you want it to match FleetCheck even closer
+
+Two extra “FleetCheck-like” touches:
+
+1. **Hero image header strip** (very faint road/warehouse blur) behind the top area
+2. **Icon style consistency**: same stroke width, same size, same colour rules (muted when inactive)
+
+---
+
+If you show me **one screenshot of FleetCheck’s sign-in screen** you’re trying to match (or link), I’ll give you a pixel-level spec: exact spacing, font sizes, shadows, and the component recipe to replicate it.
