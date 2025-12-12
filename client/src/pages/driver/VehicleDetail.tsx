@@ -275,16 +275,19 @@ export default function VehicleDetail() {
                   <button onClick={() => setDialogState("none")} className="p-2 -ml-2">
                     <ChevronLeft className="h-6 w-6 text-slate-600" />
                   </button>
-                  <h2 className="text-lg font-bold text-slate-900">Select Checksheet</h2>
+                  <h2 className="t-h2">Choose check type</h2>
                 </div>
 
-                <div className="flex-1 p-4 space-y-3">
-                  {/* Only trailer inspections toggle */}
+                <div className="flex-1 p-4 space-y-3 bg-gradient-to-b from-slate-50 to-white">
+                  {/* Trailer checks only toggle */}
                   <TitanCard 
                     className="p-4 flex items-center justify-between cursor-pointer"
                     onClick={() => setOnlyTrailerInspections(!onlyTrailerInspections)}
                   >
-                    <span className="text-slate-700">Only show trailer inspections</span>
+                    <div>
+                      <div className="t-h3">Trailer checks only</div>
+                      <div className="t-sub">Show trailer-specific inspections and defects.</div>
+                    </div>
                     <div className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-colors ${
                       onlyTrailerInspections ? 'bg-primary border-primary text-white' : 'border-slate-300'
                     }`}>
@@ -296,26 +299,28 @@ export default function VehicleDetail() {
                   {!onlyTrailerInspections && (
                     <>
                       <TitanCard 
-                        className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        variant="interactive"
+                        className="p-4 flex items-center gap-4"
                         onClick={() => handleSelectChecksheet("end_of_shift")}
                         data-testid="checksheet-end-of-shift"
                       >
-                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-blue-600" />
+                        <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="flex-1 font-medium text-slate-800">End of shift inspection</span>
+                        <span className="flex-1 t-h3">End of shift inspection</span>
                         <ChevronRight className="h-5 w-5 text-slate-400" />
                       </TitanCard>
 
                       <TitanCard 
-                        className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        variant="interactive"
+                        className="p-4 flex items-center gap-4"
                         onClick={() => handleSelectChecksheet("safety")}
                         data-testid="checksheet-safety"
                       >
-                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-blue-600" />
+                        <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
                         </div>
-                        <span className="flex-1 font-medium text-slate-800">Safety check</span>
+                        <span className="flex-1 t-h3">Safety check</span>
                         <ChevronRight className="h-5 w-5 text-slate-400" />
                       </TitanCard>
                     </>
@@ -324,13 +329,14 @@ export default function VehicleDetail() {
                   {/* Trailer-only options */}
                   {onlyTrailerInspections && hasTrailer && (
                     <TitanCard 
-                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                      variant="interactive"
+                      className="p-4 flex items-center gap-4"
                       onClick={() => handleSelectChecksheet("safety")}
                     >
-                      <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-blue-600" />
+                      <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
-                      <span className="flex-1 font-medium text-slate-800">Trailer inspection</span>
+                      <span className="flex-1 t-h3">Trailer inspection</span>
                       <ChevronRight className="h-5 w-5 text-slate-400" />
                     </TitanCard>
                   )}

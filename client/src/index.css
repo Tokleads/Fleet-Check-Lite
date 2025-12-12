@@ -160,10 +160,20 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-  /* Titan Typography Scale */
-  h1 { @apply text-4xl font-bold tracking-tight text-foreground; }
-  h2 { @apply text-2xl font-semibold tracking-tight text-foreground; }
-  h3 { @apply text-xl font-semibold tracking-tight text-foreground; }
-  h4 { @apply text-lg font-medium tracking-tight text-foreground; }
-  p { @apply leading-relaxed; }
+}
+
+/* Titan Fleet Typography System - £50k UI */
+@layer utilities {
+  .t-h1 { @apply text-[28px] leading-[32px] font-semibold tracking-[-0.02em] text-slate-900; }
+  .t-h2 { @apply text-[20px] leading-[24px] font-semibold tracking-[-0.01em] text-slate-900; }
+  .t-h3 { @apply text-[16px] leading-[20px] font-semibold text-slate-900; }
+  .t-body { @apply text-[15px] leading-[22px] text-slate-700; }
+  .t-sub { @apply text-[13px] leading-[18px] text-slate-500; }
+  .t-cap { @apply text-[12px] leading-[16px] uppercase tracking-[0.08em] text-slate-500 font-medium; }
+}
+
+/* Titan Fleet Motion Spec */
+@layer utilities {
+  .motion-spring { transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .motion-fast { transition: all 0.14s cubic-bezier(0.2, 0.8, 0.2, 1); }
 }

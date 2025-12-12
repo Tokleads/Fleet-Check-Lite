@@ -388,15 +388,15 @@ export default function VehicleInspection() {
         </div>
 
         <div className="space-y-3 pt-4">
-          {/* Odometer Card */}
-          <TitanCard className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0 shadow-lg">
-            <label className="text-xs font-medium text-white/60 uppercase tracking-wider block mb-2">Odometer Reading</label>
+          {/* Odometer Card - Premium */}
+          <TitanCard className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0 shadow-lg">
+            <label className="t-cap text-white/60 block mb-2">Odometer (miles)</label>
             <TitanInput
               type="number"
-              placeholder="Enter current km"
+              placeholder="Enter current reading"
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
-              className="font-mono text-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 h-14"
+              className="font-mono text-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 h-14 focus:ring-white/20"
               data-testid="input-odometer"
             />
           </TitanCard>
@@ -523,12 +523,12 @@ export default function VehicleInspection() {
           )}
         </AnimatePresence>
 
-        {/* Floating Submit Button */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur border-t border-slate-200 z-30">
-          <div className="max-w-md mx-auto">
+        {/* Premium Bottom Submit Bar */}
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/60 bg-white/85 backdrop-blur px-4 py-3 pb-safe">
+          <div className="max-w-md mx-auto space-y-2">
             <TitanButton 
               size="lg" 
-              className="w-full shadow-xl" 
+              className="w-full" 
               onClick={handleSubmit}
               isLoading={isSubmitting}
               disabled={!canSubmit}
@@ -540,10 +540,13 @@ export default function VehicleInspection() {
                 : !canSubmit 
                   ? `Complete All Checks (${checkedItems.length}/${allItems.length})`
                   : failedItems.length > 0 
-                    ? `Submit with ${failedItems.length} Defect(s)`
-                    : `Submit ${checkTitle} ✓`
+                    ? `Submit with ${failedItems.length} Fault(s)`
+                    : `Submit ${checkTitle}`
               }
             </TitanButton>
+            {canSubmit && (
+              <p className="text-center t-sub">Submitted to Transport — timestamped and saved.</p>
+            )}
           </div>
         </div>
       </div>
@@ -551,7 +554,7 @@ export default function VehicleInspection() {
   );
 }
 
-// Check Item Row Component
+// Check Item Row Component - Premium £50k UI
 function CheckItemRow({ 
   item, 
   isLast, 
@@ -601,18 +604,18 @@ function CheckItemRow({
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchCancel}
       className={`
-        p-4 flex items-center gap-3 cursor-pointer select-none transition-all
-        ${!isLast ? 'border-b border-slate-50' : ''}
-        ${isPressed ? 'bg-slate-100 scale-[0.98]' : 'hover:bg-slate-50'}
-        ${item.status === 'pass' ? 'bg-green-50/50' : ''}
-        ${item.status === 'fail' ? 'bg-red-50/50' : ''}
+        px-4 py-4 flex items-center gap-3 cursor-pointer select-none transition-all rounded-2xl mx-1 my-1
+        ${isPressed ? 'bg-slate-100 scale-[0.99]' : ''}
+        ${item.status === 'pass' ? 'bg-emerald-50/60 border border-emerald-200' : ''}
+        ${item.status === 'fail' ? 'bg-amber-50/70 border border-amber-200' : ''}
+        ${item.status === 'unchecked' ? 'bg-white border border-slate-200/70 hover:bg-slate-50/60 active:bg-slate-50' : ''}
       `}
     >
       <div className={`
-        h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all
-        ${item.status === 'pass' ? 'bg-green-500 text-white' : ''}
-        ${item.status === 'fail' ? 'bg-red-500 text-white' : ''}
-        ${item.status === 'unchecked' ? 'bg-slate-100 text-slate-400 border-2 border-dashed border-slate-200' : ''}
+        h-11 w-11 rounded-xl flex items-center justify-center text-sm font-bold transition-all shadow-sm
+        ${item.status === 'pass' ? 'bg-emerald-500 text-white' : ''}
+        ${item.status === 'fail' ? 'bg-amber-500 text-white' : ''}
+        ${item.status === 'unchecked' ? 'bg-slate-100 text-slate-400 border-2 border-dashed border-slate-300' : ''}
       `}>
         {item.status === 'pass' && <Check className="h-5 w-5" />}
         {item.status === 'fail' && <AlertTriangle className="h-5 w-5" />}
@@ -620,17 +623,20 @@ function CheckItemRow({
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${item.status === 'unchecked' ? 'text-slate-700' : item.status === 'pass' ? 'text-green-800' : 'text-red-800'}`}>
+        <p className={`t-body font-medium ${item.status === 'unchecked' ? 'text-slate-800' : item.status === 'pass' ? 'text-emerald-900' : 'text-amber-900'}`}>
           {item.label}
         </p>
         {item.status === 'unchecked' && (
-          <p className="text-xs text-slate-400">Tap = Pass • Hold = Fail</p>
+          <p className="t-sub">Tap: Pass · Hold: Report fault</p>
         )}
         {item.status === 'pass' && (
-          <p className="text-xs text-green-600">Passed ✓</p>
+          <p className="text-[13px] text-emerald-600 font-medium">Passed</p>
         )}
-        {item.status === 'fail' && item.defectNote && (
-          <p className="text-xs text-red-600 truncate">{item.defectNote}</p>
+        {item.status === 'fail' && (
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-[11px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Fix required</span>
+            {item.defectNote && <span className="text-[12px] text-amber-700 truncate">{item.defectNote}</span>}
+          </div>
         )}
       </div>
     </div>

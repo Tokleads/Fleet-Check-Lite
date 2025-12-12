@@ -1,0 +1,289 @@
+Yep — the single scroll list is **fine**, but right now it reads like “form UI” not “premium mobile product”. The way FleetCheck feels expensive is **hierarchy + spacing + surfaces + states + micro-interactions**.
+
+Below is a **surgical punch-list** you can apply **without changing core logic**. It’s written as “do this, change these classes, add these utilities”.
+
+---
+
+## 1) Global polish: typography + spacing rules (stop the UI drifting)
+
+### Typography scale (use everywhere)
+
+Create utility classes so every screen uses the same hierarchy:
+
+**`client/src/index.css`**
+
+```css
+@layer utilities {
+  .t-h1 { @apply text-[28px] leading-[32px] font-semibold tracking-[-0.02em]; }
+  .t-h2 { @apply text-[20px] leading-[24px] font-semibold tracking-[-0.01em]; }
+  .t-h3 { @apply text-[16px] leading-[20px] font-semibold; }
+
+  .t-body { @apply text-[15px] leading-[22px]; }
+  .t-sub  { @apply text-[13px] leading-[18px] text-muted-foreground; }
+  .t-cap  { @apply text-[12px] leading-[16px] uppercase tracking-[0.08em] text-muted-foreground; }
+}
+```
+
+**Rules**
+
+* Screen title = `.t-h2`
+* Card title = `.t-h3`
+* Labels = `.t-cap`
+* Helper text = `.t-sub`
+* Body = `.t-body`
+
+### Spacing system (mobile)
+
+* Screen padding: `px-4` always (16px)
+* Card padding: `p-4` (16px) or `p-5` (20px) for primary cards
+* Vertical rhythm: `space-y-3` (12px) between cards, `space-y-2` inside cards
+
+---
+
+## 2) “£50k UI” surfaces: cards, borders, shadows, background
+
+### Make TitanCard feel premium (one change, everywhere)
+
+Update your `TitanCard` base class (or wrap with a `t-card` utility):
+
+**Target look:** soft border + subtle shadow + hover/press feedback + slightly “lifted”.
+
+```ts
+// TitanCard base class idea
+"rounded-2xl border border-slate-200/70 bg-white/90 shadow-[0_1px_1px_rgba(15,23,42,0.06),0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/75"
+```
+
+Add interaction states:
+
+```ts
+"transition will-change-transform active:scale-[0.99] active:shadow-[0_1px_1px_rgba(15,23,42,0.06),0_6px_16px_rgba(15,23,42,0.10)]"
+```
+
+### Screen background (removes “flat white app” vibe)
+
+On driver pages wrapper, add:
+
+```tsx
+className="min-h-dvh bg-gradient-to-b from-slate-50 to-white"
+```
+
+---
+
+## 3) Color: keep your blue, but make it “fleet premium” not “generic SaaS”
+
+Right now your primary blue (#2563eb) is fine — the issue is everything else is also default.
+
+**Add two supporting tones:**
+
+* “Ink” text: `text-slate-900` and `text-slate-700`
+* “Hairline” borders: `border-slate-200/70`
+* “Quiet surfaces”: `bg-slate-50`, `bg-white/80`
+
+**Buttons:** use richer primary treatment:
+
+```tsx
+className="bg-primary text-primary-foreground shadow-sm hover:shadow-md active:shadow-sm"
+```
+
+**Icons in cards:** stop using `bg-blue-100 text-blue-600` everywhere. Use:
+
+```tsx
+className="bg-primary/10 text-primary"
+```
+
+---
+
+## 4) Inputs: make them feel like a modern app (FleetCheck-level)
+
+Your inputs likely look “HTML-ish”. Fix with:
+
+* height
+* padding
+* border/outline
+* placeholder color
+* focus ring that feels intentional
+
+Use:
+
+```tsx
+className="h-12 w-full rounded-2xl border border-slate-200/80 bg-white/90 px-4 text-[15px] font-medium text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary/40"
+```
+
+If you have an icon inside (search/VRM):
+
+* Wrap input in a card
+* Put icon in a 40px pill at left
+
+---
+
+## 5) Motion: remove “floaty”, add “confident” (Framer defaults matter)
+
+### Use a single motion spec everywhere
+
+```ts
+export const motionSpring = { type: "spring", stiffness: 520, damping: 38, mass: 0.8 };
+export const motionFast = { duration: 0.14, ease: [0.2, 0.8, 0.2, 1] };
+```
+
+### What to animate (and what NOT to)
+
+✅ Animate:
+
+* section expand/collapse height + opacity (fast)
+* bottom sheet in/out (spring)
+* progress bar width (fast)
+* button press scale (tiny)
+
+❌ Avoid:
+
+* long fades on whole screen
+* slow card slides for everything (feels “template”)
+
+Add press feedback to tappable cards:
+
+```tsx
+<motion.button whileTap={{ scale: 0.99 }} transition={motionFast} />
+```
+
+---
+
+## 6) Component states (this is where “expensive” lives)
+
+### Buttons
+
+* Disabled: reduce opacity + remove shadow + cursor
+* Loading: keep width stable, show spinner left
+
+Example:
+
+```tsx
+className="h-12 rounded-2xl px-5 font-semibold shadow-sm transition active:scale-[0.99] disabled:opacity-50 disabled:shadow-none"
+```
+
+### Cards / list rows
+
+Add:
+
+* `hover:bg-slate-50/60` (desktop/tablet)
+* `active:bg-slate-50` (mobile)
+* `focus-visible:ring-4 focus-visible:ring-primary/15`
+
+### “Pass / Fail” items
+
+Your current “tap to check” is fine, but needs **stronger state styling**:
+
+* Pass: green tint background + check icon
+* Fail: amber/red tint + “Fix required” chip
+
+Example row base:
+
+```tsx
+className="rounded-2xl border border-slate-200/70 bg-white px-4 py-4 shadow-sm transition active:bg-slate-50"
+```
+
+Pass state overlay:
+
+```tsx
+"border-emerald-200 bg-emerald-50/60"
+```
+
+Fail state overlay:
+
+```tsx
+"border-amber-200 bg-amber-50/70"
+```
+
+---
+
+## 7) Microcopy (UK haulage tone = crisp, not “app-y”)
+
+Replace:
+
+* “Tap to check” → **“Tap: Pass • Hold: Report fault”**
+* “Defect report - detail any faults” → **“Fault details (if any)”**
+* “Defect details” placeholder “None recorded” → **“Describe the issue (e.g. ‘NSR marker light out’)”**
+* “Defect image 1” → **“Photo evidence (recommended)”**
+* “Only show trailer inspections” → **“Trailer checks only”**
+* “Select Checksheet” → **“Choose check type”**
+* “Odometer reading” → **“Odometer (miles)”** (UK clarity)
+
+Add one confidence line under submit:
+
+* **“Submitted to Transport — timestamped and saved.”**
+
+---
+
+## 8) Mobile-first ergonomics (glove-friendly + thumb zones)
+
+* Put primary actions in a **bottom sticky bar** (you already do floating submit — make it a full-width bottom bar on long forms)
+* Ensure all tappables are `min-h-12`
+* Keep destructive actions away from bottom-right thumb zone
+
+Bottom bar pattern:
+
+```tsx
+className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/60 bg-white/85 backdrop-blur px-4 py-3"
+```
+
+---
+
+## 9) Your specific screen that looks “cheap” right now: Checksheet selection
+
+In your `VehicleDetail.tsx` checksheet cards, change:
+
+### Header
+
+Current:
+
+```tsx
+<h2 className="text-lg font-bold text-slate-900">
+```
+
+Replace with:
+
+```tsx
+<h2 className="t-h2 text-slate-900">
+```
+
+### Toggle card
+
+Make it look like a proper setting row:
+
+```tsx
+<TitanCard className="p-4 flex items-center justify-between">
+  <div>
+    <div className="t-h3 text-slate-900">Trailer checks only</div>
+    <div className="t-sub">Show trailer-specific inspections and defects.</div>
+  </div>
+  ...
+</TitanCard>
+```
+
+### Checksheet option cards
+
+Replace `bg-blue-100 text-blue-600` with premium primary tint:
+
+```tsx
+<div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+  <FileText className="h-5 w-5 text-primary" />
+</div>
+```
+
+---
+
+## 10) Quick “feel like £50k” checklist (if you only do 10 things)
+
+1. Standardise type with `.t-h2 / .t-h3 / .t-sub / .t-cap`
+2. Upgrade TitanCard shadow + border (one global change)
+3. Add background gradient on all driver screens
+4. Modern input styling + focus ring
+5. Strong pass/fail visual states (real colour + chips)
+6. Bottom sticky submit bar (not floating pill)
+7. Tighten spacing: `space-y-3`, `p-4`, `rounded-2xl`
+8. Motion: fast + spring, remove slow fades
+9. Microcopy: “Tap Pass • Hold Report fault”
+10. Consistent icon treatment: `bg-primary/10 text-primary`
+
+---
+
+If you want, paste the **`TitanCard` component** and one **inspection item row component** here and I’ll rewrite them with the exact Tailwind classes (drop-in replacements) so the whole app inherits the premium look immediately.

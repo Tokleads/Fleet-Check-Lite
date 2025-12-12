@@ -12,7 +12,7 @@ export function DriverLayout({ children }: { children: React.ReactNode }) {
   const isActive = (path: string) => location === path;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col pb-safe">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col pb-safe">
       {/* Mobile Header - Titan Style */}
       <header className="bg-white text-slate-900 px-4 py-3 shadow-sm border-b border-slate-100 sticky top-0 z-40">
         <div className="flex justify-between items-center max-w-md mx-auto w-full">

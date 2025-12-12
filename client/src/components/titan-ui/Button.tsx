@@ -10,18 +10,20 @@ interface TitanButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   children: React.ReactNode;
 }
 
+const motionFast = { duration: 0.14, ease: [0.2, 0.8, 0.2, 1] as const };
+
 const variants = {
-  primary: "bg-primary text-primary-foreground shadow-titan-md hover:brightness-110 active:brightness-95",
-  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-  ghost: "hover:bg-accent hover:text-accent-foreground",
-  destructive: "bg-destructive text-destructive-foreground shadow-titan-sm hover:bg-destructive/90",
-  outline: "border border-input bg-transparent shadow-titan-sm hover:bg-accent hover:text-accent-foreground",
+  primary: "bg-primary text-primary-foreground shadow-sm hover:shadow-md active:shadow-sm",
+  secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200/80 active:bg-slate-200",
+  ghost: "hover:bg-slate-100 active:bg-slate-100 text-slate-700",
+  destructive: "bg-red-500 text-white shadow-sm hover:bg-red-600 active:bg-red-600",
+  outline: "border border-slate-200/80 bg-white shadow-sm hover:bg-slate-50 active:bg-slate-100 text-slate-700",
 };
 
 const sizes = {
-  sm: "h-9 px-4 text-xs rounded-lg",
-  md: "h-11 px-6 text-sm rounded-xl", // 44px min touch target
-  lg: "h-14 px-8 text-base rounded-[14px]", // Titan Standard Primary
+  sm: "h-9 px-4 text-xs rounded-xl",
+  md: "h-11 px-5 text-sm rounded-xl",
+  lg: "h-14 px-6 text-base rounded-2xl",
   icon: "h-11 w-11 rounded-xl flex items-center justify-center",
 };
 
@@ -30,9 +32,12 @@ export const TitanButton = React.forwardRef<HTMLButtonElement, TitanButtonProps>
     return (
       <motion.button
         ref={ref}
-        whileTap={{ scale: 0.98 }}
+        whileTap={{ scale: 0.99 }}
+        transition={motionFast}
         className={cn(
-          "inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center font-semibold transition-all",
+          "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/20",
+          "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
           variants[variant],
           sizes[size],
           className
