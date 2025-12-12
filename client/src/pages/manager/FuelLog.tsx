@@ -1,7 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { ManagerLayout } from "./ManagerLayout";
-import { TitanCard } from "@/components/titan-ui/Card";
-import { TitanButton } from "@/components/titan-ui/Button";
 import { session } from "@/lib/session";
 import { 
   Fuel,
@@ -11,7 +9,6 @@ import {
   Droplets,
   MapPin
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ManagerFuelLog() {
   const company = session.getCompany();
@@ -57,65 +54,97 @@ export default function ManagerFuelLog() {
     return user?.name || "Unknown";
   };
 
+  const totalDiesel = fuelEntries?.filter((e: any) => e.fuelType === 'DIESEL').reduce((sum: number, e: any) => sum + (e.litres || 0), 0) || 0;
+  const totalAdBlue = fuelEntries?.filter((e: any) => e.fuelType === 'ADBLUE').reduce((sum: number, e: any) => sum + (e.litres || 0), 0) || 0;
+
   return (
     <ManagerLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Fuel Log</h1>
-            <p className="text-slate-500 mt-1">Diesel and AdBlue fill-ups (last 30 days)</p>
+            <p className="text-slate-500 mt-0.5">Diesel and AdBlue fill-ups (last 30 days)</p>
           </div>
           <div className="flex items-center gap-3">
-            <TitanButton variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+              <Filter className="h-4 w-4" />
               Filters
-            </TitanButton>
-            <TitanButton variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+              <Download className="h-4 w-4" />
               Export CSV
-            </TitanButton>
+            </button>
           </div>
         </div>
 
-        <TitanCard className="overflow-hidden">
+        {/* Summary cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-amber-50 flex items-center justify-center">
+                <Fuel className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Total Diesel</p>
+                <p className="text-2xl font-bold text-slate-900">{totalDiesel.toLocaleString()}L</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                <Droplets className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Total AdBlue</p>
+                <p className="text-2xl font-bold text-slate-900">{totalAdBlue.toLocaleString()}L</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full" data-testid="table-fuel-log">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="bg-slate-50/50">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date/Time</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">VRM</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mileage</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Litres</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date/Time</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">VRM</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Driver</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Mileage</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Litres</th>
+                  <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   Array.from({ length: 10 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-6 w-20" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
-                      <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-32 bg-slate-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-20 bg-slate-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-24 bg-slate-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-16 bg-slate-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-6 w-20 bg-slate-100 rounded-full animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-12 bg-slate-100 rounded animate-pulse" /></td>
+                      <td className="px-5 py-4"><div className="h-4 w-24 bg-slate-100 rounded animate-pulse" /></td>
                     </tr>
                   ))
                 ) : fuelEntries?.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
-                      No fuel entries found
+                    <td colSpan={7} className="px-5 py-16 text-center">
+                      <Fuel className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500">No fuel entries found</p>
                     </td>
                   </tr>
                 ) : (
                   fuelEntries?.map((entry: any) => (
-                    <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-slate-400" />
+                    <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                            <Clock className="h-4 w-4 text-slate-400" />
+                          </div>
                           <div>
                             <p className="text-sm font-medium text-slate-900">
                               {new Date(entry.createdAt).toLocaleDateString('en-GB', { 
@@ -133,41 +162,41 @@ export default function ManagerFuelLog() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <span className="font-mono font-semibold text-sm text-slate-900">
                           {getVehicleVrm(entry.vehicleId)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-5 py-4 text-sm text-slate-600">
                         {getDriverName(entry.driverId)}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         <span className="font-mono text-sm text-slate-900">
-                          {entry.odometer?.toLocaleString()} mi
+                          {entry.odometer?.toLocaleString() || '-'} mi
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         {entry.fuelType === 'DIESEL' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium">
                             <Fuel className="h-3 w-3" />
                             Diesel
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
                             <Droplets className="h-3 w-3" />
                             AdBlue
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm text-slate-900">
+                      <td className="px-5 py-4">
+                        <span className="text-sm font-medium text-slate-900">
                           {entry.litres ? `${entry.litres}L` : '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-5 py-4">
                         {entry.location ? (
-                          <div className="flex items-center gap-1 text-sm text-slate-600">
-                            <MapPin className="h-3 w-3 text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-sm text-slate-600">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400" />
                             {entry.location}
                           </div>
                         ) : (
@@ -180,7 +209,7 @@ export default function ManagerFuelLog() {
               </tbody>
             </table>
           </div>
-        </TitanCard>
+        </div>
       </div>
     </ManagerLayout>
   );
