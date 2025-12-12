@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { ManagerLayout } from "./ManagerLayout";
 import { session } from "@/lib/session";
 import { 
@@ -10,13 +11,39 @@ import {
   XCircle,
   Search,
   MoreVertical,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpRight
 } from "lucide-react";
+
+interface LicenseInfo {
+  tier: string;
+  tierDisplay: string;
+  activeVehicleCount: number;
+  allowance: number;
+  graceOverage: number;
+  softLimit: number;
+  hardLimit: number;
+  state: 'ok' | 'at_limit' | 'in_grace' | 'over_hard_limit';
+  remainingToSoft: number;
+  remainingToHard: number;
+  percentUsed: number;
+}
 
 export default function ManagerFleet() {
   const company = session.getCompany();
   const companyId = company?.id;
   const [searchQuery, setSearchQuery] = useState("");
+  const [, navigate] = useLocation();
+
+  const { data: license } = useQuery<LicenseInfo>({
+    queryKey: ["license", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/company/license/${companyId}`);
+      if (!res.ok) throw new Error("Failed to fetch license info");
+      return res.json();
+    },
+    enabled: !!companyId,
+  });
 
   const { data: vehicles, isLoading } = useQuery({
     queryKey: ["vehicles", companyId],
@@ -65,11 +92,67 @@ export default function ManagerFleet() {
             <h1 className="text-2xl font-bold text-slate-900">Fleet</h1>
             <p className="text-slate-500 mt-0.5">Manage vehicles and trailers</p>
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm" data-testid="button-add-vehicle">
+          <button 
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm ${
+              license?.state === 'over_hard_limit' 
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+            disabled={license?.state === 'over_hard_limit'}
+            data-testid="button-add-vehicle"
+          >
             <Plus className="h-4 w-4" />
             Add Vehicle
           </button>
         </div>
+
+        {/* License Warning Banners */}
+        {license?.state === 'over_hard_limit' && (
+          <div className="flex items-center justify-between gap-4 p-4 bg-red-50 border border-red-100 rounded-xl" data-testid="banner-over-limit">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-800">Vehicle capacity exceeded</p>
+                <p className="text-sm text-red-600 mt-0.5">You can't add more vehicles until you upgrade your license.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => navigate('/manager/license')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex-shrink-0"
+              data-testid="button-request-upgrade-fleet"
+            >
+              Request upgrade
+              <ArrowUpRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {(license?.state === 'at_limit' || license?.state === 'in_grace') && (
+          <div className="flex items-center justify-between gap-4 p-4 bg-amber-50 border border-amber-100 rounded-xl" data-testid="banner-grace-warning">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">
+                  {license?.state === 'at_limit' 
+                    ? "You've reached your vehicle allowance" 
+                    : `Grace active: ${(license?.activeVehicleCount || 0) - (license?.allowance || 0)} of ${license?.graceOverage || 0} grace vehicles used`
+                  }
+                </p>
+                <p className="text-sm text-amber-600 mt-0.5">
+                  You have {license?.remainingToHard || 0} slot{(license?.remainingToHard || 0) !== 1 ? 's' : ''} remaining before adding vehicles is blocked.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => navigate('/manager/license')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-amber-700 hover:bg-amber-100 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+              data-testid="button-view-license-fleet"
+            >
+              View license
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative max-w-md">
