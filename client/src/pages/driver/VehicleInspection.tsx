@@ -63,7 +63,7 @@ const VEHICLE_SECTIONS: Omit<Section, "isExpanded">[] = [
   {
     id: "cab",
     title: "In Cab",
-    icon: "🛞",
+    icon: "💺",
     items: [
       { id: "seatbelts", label: "Seat belts", status: "unchecked" },
       { id: "horn", label: "Horn / wipers / washers", status: "unchecked" },
