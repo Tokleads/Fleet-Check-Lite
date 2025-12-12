@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema } from "@shared/schema";
 import { z } from "zod";
+import { dvsaService } from "./dvsa";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -172,6 +173,34 @@ export async function registerRoutes(
       res.json(entries);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // DVSA MOT lookup
+  app.get("/api/dvsa/mot/:registration", async (req, res) => {
+    try {
+      const motStatus = await dvsaService.getMotStatus(req.params.registration);
+      if (!motStatus) {
+        return res.status(404).json({ error: "Vehicle not found in DVSA database" });
+      }
+      res.json(motStatus);
+    } catch (error) {
+      console.error("DVSA lookup error:", error);
+      res.status(500).json({ error: "Failed to fetch MOT data" });
+    }
+  });
+
+  // DVSA full vehicle lookup
+  app.get("/api/dvsa/vehicle/:registration", async (req, res) => {
+    try {
+      const vehicle = await dvsaService.getVehicleByRegistration(req.params.registration);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      res.json(vehicle);
+    } catch (error) {
+      console.error("DVSA vehicle lookup error:", error);
+      res.status(500).json({ error: "Failed to fetch vehicle data" });
     }
   });
 

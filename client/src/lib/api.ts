@@ -86,6 +86,35 @@ class ApiClient {
   async getFuelEntries(companyId: number, driverId: number, days = 7): Promise<FuelEntry[]> {
     return this.request(`/api/fuel?companyId=${companyId}&driverId=${driverId}&days=${days}`);
   }
+
+  // DVSA API
+  async getMotStatus(registration: string): Promise<{
+    valid: boolean;
+    expiryDate: string | null;
+    lastTestDate: string | null;
+    lastTestResult: string | null;
+    lastOdometer: number | null;
+  } | null> {
+    try {
+      return await this.request(`/api/dvsa/mot/${encodeURIComponent(registration)}`);
+    } catch {
+      return null;
+    }
+  }
+
+  async getDVSAVehicle(registration: string): Promise<{
+    registration: string;
+    make: string;
+    model: string;
+    primaryColour: string;
+    fuelType: string;
+  } | null> {
+    try {
+      return await this.request(`/api/dvsa/vehicle/${encodeURIComponent(registration)}`);
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const api = new ApiClient();
