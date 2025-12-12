@@ -1,0 +1,186 @@
+Single scroll list is **better than a multi-page form** for speed (drivers can just smash through it)… **but only if you add structure**. Right now it’ll feel “endless” and easy to miss items.
+
+What I’d do (so it beats FleetCheck):
+
+* **Keep it one scroll**, but **group into collapsible sections** (Tyres / Lights / Cab / Fluids / Coupling / Load / Walkaround / Defects) with a **sticky progress bar** + “X of Y done”.
+* Each check row is **tap once = Pass**, long-press or “…” = **Fail + requires photo + notes**.
+* **Pinned “Must capture” block** near the top: Odometer + fuel/adblue receipts (when relevant) + fuel card photo.
+* **Smart defaults** (last vehicle, last odometer shown as hint, last fuel location suggestion).
+* **Offline-first queue**: complete at the yard with no signal → auto-upload later.
+
+---
+
+## Copy/paste Replit “MEGA PROMPT” (Driver App only — premium UX, rebrandable, no vendor lock-in storage)
+
+Paste this into Replit Agent. It is written to force **high-end UI/UX**, **clean architecture**, **multi-tenant rebrand**, and **Google Drive as the storage destination** (so you don’t “hold” customer data long term).
+
+> **PROMPT START**
+>
+> You are an industry-leading product + engineering team building a **premium Driver Mobile Web App (PWA)** for UK HGV fleets. It must feel **more polished than FleetCheck**: fast, minimal taps, strong hierarchy, modern motion, excellent spacing/typography, and “glove-friendly” controls.
+>
+> ## Product name (internal)
+>
+> “DriverChecks Pro” (must be easy to rebrand per customer).
+>
+> ## Goal
+>
+> Build the **Driver-facing app only** (mobile-first PWA). Managers use their own Google Drive for storage and can later get a separate desktop portal (not in this build).
+>
+> ## Key driver workflows (must nail)
+>
+> 1. **Start Shift Check (Daily walkaround)**
+> 2. **End of Shift Check** (optional quick)
+> 3. **Fuel / AdBlue Purchase Capture** (critical)
+> 4. **Defect Report** (with required photos)
+> 5. **Vehicle search by registration** (like FleetCheck: type reg → press search → select vehicle)
+> 6. **History (last 7 days on device)** + cloud copies in Google Drive
+> 7. **Offline mode** with upload queue
+>
+> ## Hard constraints
+>
+> * Drivers should NOT see a “choose company & role” desktop-style screen. Driver app should open straight into **Driver Home** after a simple sign-in (PIN or magic link) OR demo mode.
+> * **No long-term data storage operated by us.** App uploads completed forms + images to the customer’s **Google Drive** (their account). We can keep only minimal metadata needed for syncing (or allow fully stateless mode if desired).
+> * Company policy: **do not require price** for fuel/adblue (field may exist but must be optional and hidden by default via config).
+> * Photos required: fuel receipt photo, fuel card photo, and optionally adblue receipt photo; plus defect photos on fails.
+> * Must be rebrandable per customer using a single config file (logo, colors, company name, required fields, form templates).
+>
+> ## Tech requirements (use these)
+>
+> * Frontend: **Next.js (App Router) + TypeScript**
+> * UI: Tailwind + a high-quality component approach (Radix/shadcn OK) but must look premium and custom (not default).
+> * State: React Query (or equivalent) + Zod for validation.
+> * PWA: installable, offline caching, background sync-like queue (simulate if needed).
+> * Backend: minimal Next.js route handlers (or Express) ONLY for:
+>
+>   * auth (simple)
+>   * Google Drive OAuth + upload proxy
+>   * optional vehicle lookup via DVLA/MOT API (behind environment variables; stub if keys not present)
+> * Storage: Use Google Drive:
+>
+>   * Create folder structure: /DriverChecksPro/{Company}/{VehicleReg}/{YYYY}/{MM}/
+>   * Each submission creates:
+>
+>     * JSON summary (machine readable)
+>     * PDF “Driver Check Sheet” (print-friendly)
+>     * Photos uploaded with sensible filenames
+> * Security:
+>
+>   * No public buckets. No exposing Google refresh tokens to client. Use server-side token handling.
+>   * Basic audit fields: driverId, timestamp, deviceId, gps optional toggle.
+>
+> ## UX rules (non-negotiable)
+>
+> * Mobile-first. Large tap targets. Bottom nav with 4 tabs: **Home, Checks, Capture, History, Settings** (5 ok).
+> * **Progressive disclosure**: avoid a giant endless list. Use sections that collapse/expand with completion indicators.
+> * “Tap to check” becomes:
+>
+>   * Tap = Pass (instant)
+>   * Tap again = unset
+>   * Long-press or overflow menu = Fail → open a bottom sheet that requires: severity, notes, 1–3 photos
+> * A sticky footer CTA appears when needed:
+>
+>   * “Continue” when a section incomplete
+>   * “Submit check” when all required complete
+> * Inline validation: odometer must be numeric and within reasonable delta vs last known (warn, don’t block).
+> * Offline: if no signal, allow full completion, store locally, show “Queued” badge, auto-upload later.
+> * Make it feel premium: subtle shadows, soft borders, spacing, skeleton loading, micro-animations, empty states.
+>
+> ## Core data model
+>
+> * CompanyConfig (theme + rules)
+> * Vehicle: { reg, make?, model?, fleetNo?, lastOdometer? }
+> * Driver: { id, name?, pinAuth? }
+> * CheckTemplate:
+>
+>   * sections[] each with items[]; each item has { id, label, type: passFail | photoOnly | text | number }
+> * Submission:
+>
+>   * { id, companyId, vehicleReg, driverId, type: startShift|endShift|fuel|defect, createdAt, status: draft|queued|uploaded, payload, photos[] }
+>
+> ## Screens to implement
+>
+> 1. **Driver Home**
+>
+> * “Start Safety Check” (primary)
+> * “Fuel / AdBlue Capture”
+> * “Report Defect”
+> * “Last vehicle used” quick resume
+> * Status chip: Online / Offline + queued count
+>
+> 2. **Vehicle Search**
+>
+> * reg input + SEARCH button (no auto lookup until press)
+> * results list (exact + partial)
+> * select vehicle → continue
+>
+> 3. **Safety Check (premium)**
+>
+> * top card: date/time + vehicle + driver
+> * required field: odometer
+> * collapsible sections with progress
+> * pass/fail interactions described above
+> * defect block only appears if any fails
+> * submit creates PDF + JSON + uploads
+>
+> 4. **Fuel / AdBlue Capture**
+>
+> * required: location, odometer, litres, date (default today), fuel type (diesel default)
+> * optional/hidden by config: price
+> * required photos: fuel receipt + fuel card photo
+> * adblue toggle:
+>
+>   * if enabled, capture litres + receipt photo (fuel card photo can be reused)
+>
+> 5. **History**
+>
+> * local last 7 days list with filters (vehicle, type)
+> * each item shows status: uploaded/queued
+>
+> 6. **Settings**
+>
+> * company branding preview
+> * offline storage size
+> * sign out
+> * demo mode toggle
+>
+> ## Rebranding / multi-tenant
+>
+> * Create `/config/tenants.ts` with at least 2 sample companies.
+> * Tenant selected by subdomain or query param `?tenant=apex` for now.
+> * Theme tokens: primary, accent, background, text, radius, shadow scale.
+> * Must support “required photos” & “hide price field” in config.
+>
+> ## Vehicle data + MOT API
+>
+> * Implement a Vehicle lookup service that can:
+>
+>   * (A) use an internal seeded list for demo
+>   * (B) if env `MOT_API_KEY` is present, call a server route to fetch vehicle basics by reg (do NOT block if unavailable; fall back gracefully)
+>
+> ## Deliverables
+>
+> * Complete running Replit project
+> * Clear README:
+>
+>   * how to set tenant
+>   * how to connect Google Drive OAuth (step-by-step)
+>   * env vars list
+> * Seed demo data: 45 vehicles sample regs (dummy), 3 drivers
+> * Make the UI polished. If anything looks “default template”, redo it.
+>
+> ## Acceptance criteria
+>
+> * A driver can complete a safety check in under 2 minutes with minimal taps.
+> * Fuel capture forces receipt + fuel card photo before submit.
+> * Offline completion works; queued submissions upload when back online.
+> * Rebrand by editing one tenant config file.
+>
+> Build it now. Start by scaffolding the project, then implement the core flows, then refine UI/UX to premium quality.
+>
+> **PROMPT END**
+>
+> **(After build)** create a short “UX polish checklist” in the README and apply it.
+
+---
+
+If you want, paste me the Replit build output / repo structure after it runs, and I’ll give you a **surgical “make it feel like £50k UI” punch list** (spacing, typography scale, component states, motion, microcopy) without changing your core logic.
