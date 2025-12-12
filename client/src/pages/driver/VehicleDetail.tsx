@@ -224,11 +224,11 @@ export default function VehicleDetail() {
               className="fixed inset-0 z-50 flex items-center justify-center p-6"
             >
               <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-                <h3 className="text-[18px] font-semibold text-slate-900 text-center mb-2">
-                  Trailer attached?
+                <h3 className="titan-title text-center mb-2">
+                  Trailer coupled?
                 </h3>
-                <p className="text-[13px] text-slate-500 text-center mb-6">
-                  Is a trailer coupled to this unit right now?
+                <p className="titan-meta text-center mb-6">
+                  Is a trailer currently coupled to this unit?
                 </p>
                 <div className="flex gap-3">
                   <TitanButton 
@@ -276,7 +276,7 @@ export default function VehicleDetail() {
                   <button onClick={() => setDialogState("none")} className="p-2 -ml-2">
                     <ChevronLeft className="h-6 w-6 text-slate-600" />
                   </button>
-                  <h2 className="t-h2">Choose check type</h2>
+                  <h2 className="titan-title">Select inspection type</h2>
                 </div>
 
                 <div className="flex-1 p-4 space-y-3">

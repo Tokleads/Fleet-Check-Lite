@@ -1,59 +1,403 @@
-/* src/styles/titan.css - Global £50k UI Polish Layer */
+/* ============================================
+   TITAN DESIGN SYSTEM - £50k UI Polish Layer
+   ============================================ */
 
-/* 1) Better default text rendering */
+/* Better default text rendering */
 html { 
   -webkit-font-smoothing: antialiased; 
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility; 
 }
 
-/* 2) App background: slight warmth + depth */
-body {
-  background: linear-gradient(180deg, rgba(2,6,23,0.03) 0%, rgba(2,6,23,0.00) 55%);
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+:root {
+  /* Colours - Semantic */
+  --titan-bg: 210 20% 98%;
+  --titan-surface: 0 0% 100%;
+  --titan-elevated: 0 0% 100%;
+  --titan-border: 220 13% 91%;
+  --titan-border-subtle: 220 13% 94%;
+  
+  /* Text */
+  --titan-text: 220 20% 12%;
+  --titan-text-muted: 220 10% 45%;
+  --titan-text-faint: 220 10% 60%;
+  
+  /* Semantic */
+  --titan-primary: 220 60% 50%;
+  --titan-success: 160 84% 39%;
+  --titan-warn: 38 92% 50%;
+  --titan-danger: 0 84% 60%;
+  
+  /* Radii */
+  --titan-radius-sm: 8px;
+  --titan-radius-md: 12px;
+  --titan-radius-lg: 16px;
+  --titan-radius-xl: 20px;
+  --titan-radius-full: 9999px;
+  
+  /* Shadows - Premium Soft */
+  --titan-shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --titan-shadow-2: 0 1px 1px rgba(0,0,0,0.04), 0 8px 24px rgba(2,6,23,0.06);
+  --titan-shadow-3: 0 1px 2px rgba(0,0,0,0.05), 0 12px 32px rgba(2,6,23,0.10);
+  
+  /* Spacing Rhythm */
+  --titan-space-1: 4px;
+  --titan-space-2: 8px;
+  --titan-space-3: 12px;
+  --titan-space-4: 16px;
+  --titan-space-6: 24px;
+  --titan-space-8: 32px;
+  
+  /* Motion */
+  --titan-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --titan-duration-fast: 120ms;
+  --titan-duration-normal: 180ms;
+  --titan-duration-slow: 280ms;
 }
 
-/* 3) Consistent card "authority" */
-.titan-card {
-  border-radius: 1.25rem;
-  border: 1px solid rgba(15, 23, 42, .08);
-  box-shadow:
-    0 1px 1px rgba(0,0,0,.04),
-    0 10px 30px rgba(2,6,23,.06);
-  background: white;
+/* ============================================
+   TYPOGRAPHY SCALE
+   ============================================ */
+.titan-display {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: hsl(var(--titan-text));
 }
 
-/* 4) Tap feedback (feels expensive) */
-.titan-tap {
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-.titan-tap:active { 
-  transform: scale(.99); 
-}
-
-/* 5) Better focus ring */
-:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.25);
-  border-radius: 12px;
-}
-
-/* 6) Spacing constants */
-.titan-page {
-  @apply px-4 space-y-4 pb-24;
-}
-
-/* 7) Typography hierarchy */
 .titan-title {
-  @apply text-[22px] font-semibold tracking-tight text-slate-900;
+  font-size: 22px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: hsl(var(--titan-text));
 }
 
-.titan-section-label {
-  @apply text-[12px] font-semibold tracking-widest text-slate-500 uppercase;
+.titan-section {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: hsl(var(--titan-text));
 }
 
 .titan-body {
-  @apply text-[14px] leading-[1.35];
+  font-size: 14px;
+  line-height: 1.35;
+  color: hsl(var(--titan-text));
+}
+
+.titan-meta {
+  font-size: 13px;
+  line-height: 1.4;
+  color: hsl(var(--titan-text-muted));
+}
+
+.titan-micro {
+  font-size: 12px;
+  line-height: 1.4;
+  color: hsl(var(--titan-text-faint));
+}
+
+.titan-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--titan-text-muted));
 }
 
 .titan-helper {
-  @apply text-[13px] text-slate-500;
+  font-size: 13px;
+  color: hsl(var(--titan-text-muted));
+}
+
+/* ============================================
+   CARD SYSTEM
+   ============================================ */
+.titan-card {
+  border-radius: var(--titan-radius-xl);
+  border: 1px solid hsl(var(--titan-border-subtle));
+  box-shadow: var(--titan-shadow-2);
+  background: hsl(var(--titan-surface));
+}
+
+.titan-card-flat {
+  border-radius: var(--titan-radius-xl);
+  background: hsl(var(--titan-bg));
+  border: none;
+}
+
+.titan-card-elevated {
+  border-radius: var(--titan-radius-xl);
+  border: none;
+  box-shadow: var(--titan-shadow-3);
+  background: hsl(var(--titan-surface));
+}
+
+/* ============================================
+   TAP FEEDBACK
+   ============================================ */
+.titan-tap {
+  transition: transform var(--titan-duration-fast) var(--titan-ease), 
+              box-shadow var(--titan-duration-fast) var(--titan-ease);
+  cursor: pointer;
+}
+
+.titan-tap:active { 
+  transform: scale(0.98);
+}
+
+.titan-tap-subtle:active {
+  transform: scale(0.995);
+}
+
+/* ============================================
+   FOCUS STATES
+   ============================================ */
+.titan-focus:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsla(var(--titan-primary), 0.25);
+}
+
+/* Global focus-visible for inputs */
+input:focus-visible,
+button:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsla(220, 60%, 50%, 0.2);
+}
+
+/* ============================================
+   BUTTON STATES
+   ============================================ */
+.titan-btn-primary {
+  background: hsl(var(--titan-primary));
+  color: white;
+  border: none;
+  border-radius: var(--titan-radius-lg);
+  font-weight: 600;
+  transition: all var(--titan-duration-fast) var(--titan-ease);
+}
+
+.titan-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.titan-btn-primary:active {
+  transform: scale(0.98);
+  filter: brightness(0.95);
+}
+
+.titan-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================
+   LIST ITEMS
+   ============================================ */
+.titan-list-item {
+  padding: var(--titan-space-3) var(--titan-space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--titan-space-3);
+  transition: background var(--titan-duration-fast) var(--titan-ease);
+}
+
+.titan-list-item:active {
+  background: hsl(var(--titan-bg));
+}
+
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
+.titan-progress-track {
+  height: 6px;
+  background: hsl(var(--titan-border));
+  border-radius: var(--titan-radius-full);
+  overflow: hidden;
+}
+
+.titan-progress-fill {
+  height: 100%;
+  border-radius: var(--titan-radius-full);
+  transition: width 250ms var(--titan-ease);
+}
+
+/* ============================================
+   SKELETON LOADING
+   ============================================ */
+.titan-skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--titan-border)) 25%,
+    hsl(var(--titan-border-subtle)) 50%,
+    hsl(var(--titan-border)) 75%
+  );
+  background-size: 200% 100%;
+  animation: titan-skeleton-pulse 1.5s ease-in-out infinite;
+  border-radius: var(--titan-radius-md);
+}
+
+@keyframes titan-skeleton-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+.titan-empty {
+  padding: var(--titan-space-8) var(--titan-space-4);
+  text-align: center;
+  border: 2px dashed hsl(var(--titan-border));
+  border-radius: var(--titan-radius-xl);
+  background: hsl(var(--titan-bg));
+}
+
+/* ============================================
+   BOTTOM SHEET
+   ============================================ */
+.titan-sheet-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.titan-sheet {
+  background: hsl(var(--titan-surface));
+  border-radius: var(--titan-radius-xl) var(--titan-radius-xl) 0 0;
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   CHECK ITEM STATES
+   ============================================ */
+.titan-check-unchecked {
+  background: hsl(var(--titan-surface));
+  border: 1px solid hsl(var(--titan-border));
+}
+
+.titan-check-pass {
+  background: hsl(160 84% 97%);
+  border: 1px solid hsl(160 60% 80%);
+}
+
+.titan-check-fail {
+  background: hsl(38 100% 97%);
+  border: 1px solid hsl(38 80% 80%);
+}
+
+/* ============================================
+   HOLD INDICATOR (Premium micro-interaction)
+   ============================================ */
+.titan-hold-ring {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: hsl(var(--titan-danger));
+  animation: titan-hold-spin 0.5s linear;
+}
+
+@keyframes titan-hold-spin {
+  from { 
+    transform: rotate(0deg); 
+    clip-path: inset(0 50% 0 0);
+  }
+  to { 
+    transform: rotate(360deg);
+    clip-path: none;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .titan-tap,
+  .titan-progress-fill,
+  .titan-skeleton {
+    transition: none;
+    animation: none;
+  }
+  
+  .titan-hold-ring {
+    animation: none;
+    border-color: hsl(var(--titan-danger));
+  }
+}
+
+/* ============================================
+   PAGE LAYOUT
+   ============================================ */
+.titan-page {
+  padding-left: var(--titan-space-4);
+  padding-right: var(--titan-space-4);
+  padding-bottom: 96px;
+}
+
+.titan-page > * + * {
+  margin-top: var(--titan-space-4);
+}
+
+/* ============================================
+   ICON BADGES
+   ============================================ */
+.titan-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--titan-radius-lg);
+  display: grid;
+  place-items: center;
+}
+
+.titan-icon-badge-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--titan-radius-md);
+  display: grid;
+  place-items: center;
+}
+
+/* ============================================
+   STATUS PILLS
+   ============================================ */
+.titan-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--titan-radius-full);
+}
+
+.titan-pill-success {
+  background: hsl(160 84% 92%);
+  color: hsl(160 84% 25%);
+}
+
+.titan-pill-warn {
+  background: hsl(38 100% 92%);
+  color: hsl(38 80% 30%);
+}
+
+.titan-pill-danger {
+  background: hsl(0 84% 92%);
+  color: hsl(0 84% 35%);
+}
+
+/* ============================================
+   TAP TARGET MINIMUMS (Accessibility)
+   ============================================ */
+.titan-tap-target {
+  min-height: 56px;
+  min-width: 56px;
 }

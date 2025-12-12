@@ -91,8 +91,8 @@ export default function DriverDashboard() {
                 <div className="titan-section-label">Find Vehicle</div>
                 <div className="flex gap-3">
                     <input 
-                        placeholder="Enter VRM" 
-                        className="flex-1 h-12 rounded-xl font-semibold tracking-wider border border-slate-300 px-4 uppercase focus:outline-none focus:ring-2 focus:ring-primary/25"
+                        placeholder="Enter VRM (e.g. KX65ABC)" 
+                        className="flex-1 h-12 rounded-xl font-semibold tracking-wider border border-slate-300 px-4 uppercase focus:outline-none focus:ring-2 focus:ring-primary/25 titan-focus"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -148,17 +148,15 @@ export default function DriverDashboard() {
                     <Clock className="h-3 w-3" /> Recent Vehicles
                 </div>
                 {recentVehicles.length === 0 ? (
-                    <TitanCard className="p-6 text-center border-2 border-dashed border-slate-200 bg-slate-50/50">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="h-14 w-14 rounded-2xl bg-slate-100 flex items-center justify-center">
-                                <Truck className="h-7 w-7 text-slate-400" />
-                            </div>
-                            <div className="space-y-1">
-                                <p className="font-bold text-slate-900">No recent vehicles</p>
-                                <p className="text-sm text-slate-500">Search for a vehicle above to get started with your first inspection</p>
-                            </div>
+                    <div className="titan-empty flex flex-col items-center gap-3 p-6">
+                        <div className="h-14 w-14 rounded-2xl bg-slate-100 grid place-items-center">
+                            <Truck className="h-7 w-7 text-slate-400" />
                         </div>
-                    </TitanCard>
+                        <div className="text-center space-y-1">
+                            <p className="font-semibold text-slate-900">No recent vehicles</p>
+                            <p className="titan-meta">Search for a vehicle above to start your first inspection</p>
+                        </div>
+                    </div>
                 ) : (
                     <div className="space-y-3">
                         {recentVehicles.map((vehicle, i) => (

@@ -388,16 +388,16 @@ export default function VehicleInspection() {
         </div>
 
         <div className="space-y-3 pt-4">
-          {/* Odometer Card - Data Entry Control */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-5 shadow-lg">
-            <label className="text-[11px] uppercase tracking-wider text-white/70 block mb-2">Odometer (miles)</label>
+          {/* Mileage Card - Data Entry Control */}
+          <div className="titan-card-elevated bg-gradient-to-br from-slate-900 to-slate-800 p-4">
+            <label className="titan-section-label text-white/70 block mb-2">Mileage (miles)</label>
             <input
               type="number"
               inputMode="numeric"
-              placeholder="Enter odometer reading"
+              placeholder="Enter current mileage"
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
-              className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/60 h-12 rounded-xl px-4 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-white/30"
+              className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/50 h-12 rounded-xl px-4 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-white/30"
               data-testid="input-odometer"
             />
           </div>
@@ -539,12 +539,12 @@ export default function VehicleInspection() {
               data-testid="button-submit"
             >
               {!odometer 
-                ? "Enter Odometer to Continue"
+                ? "Enter mileage to continue"
                 : !canSubmit 
-                  ? `Complete All Checks (${checkedItems.length}/${allItems.length})`
+                  ? `Complete all checks (${checkedItems.length}/${allItems.length})`
                   : failedItems.length > 0 
-                    ? `Submit with ${failedItems.length} fault(s)`
-                    : `Submit check`
+                    ? `Submit with ${failedItems.length} defect(s)`
+                    : `Submit inspection`
               }
             </TitanButton>
             {canSubmit && failedItems.length === 0 && (
@@ -557,7 +557,7 @@ export default function VehicleInspection() {
   );
 }
 
-// Check Item Row - Industrial Checklist Plate
+// Check Item Row - Industrial Checklist Plate with Hold Indicator
 function CheckItemRow({ 
   item, 
   isLast, 
@@ -571,12 +571,36 @@ function CheckItemRow({
 }) {
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null);
   const [isPressed, setIsPressed] = useState(false);
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdAnimationRef = useState<number | null>(null);
+
+  const triggerHaptic = () => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+  };
 
   const handleTouchStart = () => {
     setIsPressed(true);
+    setHoldProgress(0);
+    
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / 500, 1);
+      setHoldProgress(progress);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+    
     const timer = setTimeout(() => {
+      triggerHaptic();
       onLongPress();
       setIsPressed(false);
+      setHoldProgress(0);
     }, 500);
     setPressTimer(timer);
   };
@@ -584,17 +608,20 @@ function CheckItemRow({
   const handleTouchEnd = () => {
     if (pressTimer) {
       clearTimeout(pressTimer);
-      if (isPressed) {
+      if (isPressed && holdProgress < 1) {
+        triggerHaptic();
         onTap();
       }
     }
     setIsPressed(false);
+    setHoldProgress(0);
     setPressTimer(null);
   };
 
   const handleTouchCancel = () => {
     if (pressTimer) clearTimeout(pressTimer);
     setIsPressed(false);
+    setHoldProgress(0);
     setPressTimer(null);
   };
 
@@ -607,38 +634,58 @@ function CheckItemRow({
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchCancel}
       className={`
-        min-h-[60px] rounded-2xl border px-4 py-3 flex items-center gap-3 cursor-pointer select-none transition-all shadow-[0_1px_1px_rgba(0,0,0,0.04)]
-        ${isPressed ? 'scale-[0.99] bg-slate-50' : ''}
-        ${item.status === 'pass' ? 'bg-emerald-50/80 border-emerald-200' : ''}
-        ${item.status === 'fail' ? 'bg-amber-50/80 border-amber-200' : ''}
-        ${item.status === 'unchecked' ? 'bg-white border-slate-200/70 active:bg-slate-50' : ''}
+        titan-tap-target rounded-2xl border px-4 py-3 flex items-center gap-3 cursor-pointer select-none transition-all
+        ${isPressed ? 'scale-[0.98] bg-slate-50' : ''}
+        ${item.status === 'pass' ? 'titan-check-pass' : ''}
+        ${item.status === 'fail' ? 'titan-check-fail' : ''}
+        ${item.status === 'unchecked' ? 'titan-check-unchecked' : ''}
       `}
     >
-      <div className={`
-        h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all
-        ${item.status === 'pass' ? 'bg-emerald-500 text-white shadow-sm' : ''}
-        ${item.status === 'fail' ? 'bg-amber-500 text-white shadow-sm' : ''}
-        ${item.status === 'unchecked' ? 'bg-slate-100 text-slate-400 border-2 border-dashed border-slate-300' : ''}
-      `}>
-        {item.status === 'pass' && <Check className="h-5 w-5" />}
-        {item.status === 'fail' && <AlertTriangle className="h-5 w-5" />}
-        {item.status === 'unchecked' && '?'}
+      <div className="relative">
+        <div className={`
+          h-11 w-11 rounded-xl flex items-center justify-center text-sm font-bold transition-all
+          ${item.status === 'pass' ? 'bg-emerald-500 text-white shadow-sm' : ''}
+          ${item.status === 'fail' ? 'bg-amber-500 text-white shadow-sm' : ''}
+          ${item.status === 'unchecked' ? 'bg-slate-100 text-slate-400 border-2 border-dashed border-slate-300' : ''}
+        `}>
+          {item.status === 'pass' && <Check className="h-5 w-5" />}
+          {item.status === 'fail' && <AlertTriangle className="h-5 w-5" />}
+          {item.status === 'unchecked' && '?'}
+        </div>
+        
+        {/* Hold Progress Ring */}
+        {isPressed && holdProgress > 0 && item.status === 'unchecked' && (
+          <svg className="absolute -inset-1 w-[52px] h-[52px]" viewBox="0 0 52 52">
+            <circle
+              cx="26"
+              cy="26"
+              r="23"
+              fill="none"
+              stroke="hsl(0 84% 60%)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${holdProgress * 144.5} 144.5`}
+              transform="rotate(-90 26 26)"
+              className="transition-none"
+            />
+          </svg>
+        )}
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className={`text-[14px] font-medium leading-snug ${item.status === 'unchecked' ? 'text-slate-800' : item.status === 'pass' ? 'text-emerald-900' : 'text-amber-900'}`}>
+        <p className={`titan-body font-medium ${item.status === 'unchecked' ? 'text-slate-800' : item.status === 'pass' ? 'text-emerald-900' : 'text-amber-900'}`}>
           {item.label}
         </p>
         {item.status === 'unchecked' && (
-          <p className="text-[12px] text-slate-500 mt-0.5">Tap: Pass · Hold: Report fault</p>
+          <p className="titan-micro mt-0.5">Tap to pass · Hold to log defect</p>
         )}
         {item.status === 'pass' && (
-          <p className="text-[12px] text-emerald-600 font-medium mt-0.5">Passed</p>
+          <p className="titan-micro text-emerald-600 font-medium mt-0.5">Passed</p>
         )}
         {item.status === 'fail' && (
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Fault logged</span>
-            {item.defectNote && <span className="text-[12px] text-amber-700 truncate">{item.defectNote}</span>}
+            <span className="titan-pill titan-pill-warn">Defect logged</span>
+            {item.defectNote && <span className="titan-micro text-amber-700 truncate">{item.defectNote}</span>}
           </div>
         )}
       </div>

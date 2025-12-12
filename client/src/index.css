@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Inter', sans-serif;
-  --font-heading: 'Inter', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Oswald', 'Inter', sans-serif;
 
   /* Titan Fleet Radius Scale */
   --radius-sm: 0.5rem;   /* 8px */

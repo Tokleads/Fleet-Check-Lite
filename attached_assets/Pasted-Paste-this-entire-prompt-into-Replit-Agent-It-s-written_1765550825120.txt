@@ -1,0 +1,208 @@
+Paste this **entire prompt** into Replit Agent. It’s written to **upgrade UI/UX to “£50k product feel” without changing core logic**, and it forces the agent to produce a **polish pass + design system + component states + microcopy** across your existing screens.
+
+---
+
+## ✅ REPLIT MEGA PROMPT — “£50k UI Polish Pass” (Driver App)
+
+You are a principal product designer + senior frontend engineer (React/TS/Tailwind/shadcn/Radix/Framer Motion) hired to do a **surgical premium UI/UX polish pass** on an existing UK HGV driver PWA. **Do NOT change core logic, routes, data model, or backend behaviour.** Only improve presentation, interaction, states, typography, spacing, motion, and microcopy.
+
+### Project context
+
+* App: UK HGV Fleet Driver App (PWA) for vehicle inspections + fuel/AdBlue capture + defect reporting.
+* Competitor: FleetCheck (must feel more premium).
+* Users: HGV drivers (glove-friendly, fast, low cognitive load), transport managers (professional outputs).
+* Stack: React + TypeScript + Vite, TailwindCSS, shadcn/Radix, custom “Titan UI” components, Framer Motion, Express + Postgres.
+* Constraint: **Driver-first UI.** Drivers should not see manager-style login/role selection screens. Driver access is via **Company Code + Driver PIN** (simple, fast).
+
+### Screens already implemented (do not remove)
+
+1. Driver Home/Dashboard
+2. Vehicle Search + Recent vehicles
+3. Vehicle Actions (Start Inspection, Fuel/AdBlue, Report Defect)
+4. Trailer attached dialog (Yes/No)
+5. Check type selection (End of shift / Safety check + trailer-only toggle)
+6. Safety Check screen:
+
+   * Sticky header, progress bar
+   * Odometer input card
+   * Collapsible sections (Lights, Exterior, Tyres & Wheels, In Cab, Fluids & Mechanical, Load & Security + Trailer sections when applicable)
+   * Tap = Pass (green)
+   * Long-press (500ms) = Fail → opens defect bottom sheet
+   * Defect bottom sheet: description + photo capture + optional additional photo slots
+   * Floating submit button with dynamic label
+
+### What to build (deliverables)
+
+You will perform an **App-wide UI/UX refinement pass** and produce:
+
+1. **A unified premium design system** (tokens, typography scale, spacing scale, radii, shadows, borders).
+2. **Component standards**: buttons, inputs, cards, lists, modals, bottom sheets, nav bar, progress.
+3. **State polish**: hover/active/pressed/focus/disabled/loading/skeleton/empty/error states for each screen.
+4. **Motion system**: subtle and intentional, using Framer Motion. Remove any over-animation. Add micro-interactions that increase perceived quality.
+5. **Microcopy pass** using UK haulage terminology: VRM, mileage, defect, trailer coupled, end of shift inspection, etc.
+6. **Accessibility + mobile ergonomics**: thumb zones, 56px tap targets, high contrast, readable type, reduced motion support.
+
+### Non-negotiable quality bar
+
+Make it feel like a **£50k UI**:
+
+* crisp hierarchy (titles vs labels vs metadata)
+* consistent spacing rhythm
+* restrained colour usage (primary colour for actions only)
+* premium shadows + borders (no “default Tailwind look”)
+* correct empty/skeleton states
+* clear touch feedback on every tap
+* long-press affordance with a subtle visual “hold” indicator (premium)
+
+### Hard constraints
+
+* DO NOT change backend APIs.
+* DO NOT rewrite data fetching logic.
+* DO NOT remove features.
+* DO NOT introduce heavy libraries beyond what exists (Tailwind/shadcn/Radix/Framer Motion ok).
+* Keep performance fast on low-end phones.
+* Keep layouts mobile-first; ensure desktop still looks clean.
+
+---
+
+# Implementation plan you must follow
+
+## Step A — Audit and map current UI
+
+* Identify existing UI components and where styles are inconsistent.
+* Locate where Tailwind classes are duplicated or inconsistent.
+* Output a short “before” map in comments.
+
+## Step B — Create “Titan Design Tokens”
+
+Create/update a single source of truth for styling:
+
+* Use CSS variables in `src/styles/globals.css` (or equivalent) and map into Tailwind config.
+* Add tokens for:
+
+  * colours: background/surface/elevated/text-muted/border/primary/success/warn/danger
+  * radii: sm/md/lg/xl
+  * shadow: 1/2/3 (premium soft)
+  * spacing rhythm: 4/8/12/16/24/32
+  * typography scale: display/title/section/body/meta/micro
+* Ensure dark mode compatibility (even if UI is light-first).
+
+## Step C — Typography system (must implement)
+
+* Default font: Inter for UI.
+* Headings: Oswald for screen titles only (optional fallback to Inter if not loaded).
+* Enforce hierarchy with Tailwind utilities/classes:
+
+  * Screen title: text-xl font-medium tracking-tight leading-tight
+  * Section label (uppercase meta): text-xs font-semibold tracking-widest text-muted-foreground
+  * Card title: text-base font-semibold
+  * Body: text-sm font-normal
+  * Microcopy: text-xs text-muted-foreground
+* Replace “everything bold” with correct weights.
+
+## Step D — Component polish (must implement)
+
+Implement/upgrade these components in your Titan library (or add if missing):
+
+1. `TitanCard`
+2. `TitanHeader` (sticky with title + back + meta line)
+3. `TitanSearchBar` (VRM input + search button with proper focus/active/disabled)
+4. `TitanListItem` (chevron, icon, subtitle)
+5. `TitanSectionAccordion` (collapsible section header with progress)
+6. `TitanCheckItem` (tap pass / hold defect)
+7. `TitanBottomSheet` (defect reporting)
+8. `TitanFAB` (floating submit button)
+9. `TitanSkeleton` (loading state)
+10. `TitanEmptyState`
+
+All components must have:
+
+* pressed state (scale 0.98 + subtle shadow change)
+* focus-visible rings
+* disabled styling
+* loading spinner or skeleton
+* consistent padding: 16 on cards, 12 on list items, 24 screen gutters top sections
+
+## Step E — Motion rules (Framer Motion)
+
+* Use restrained spring motion: stiffness 380, damping 32
+* Only animate:
+
+  * accordion open/close
+  * progress bar updates
+  * bottom sheet open/close
+  * tap/press feedback (small scale)
+* Add premium micro-interaction:
+
+  * Long-press hold indicator: show a circular/radial progress around the check icon during the 500ms hold.
+  * Haptic tick on pass/fail (navigator.vibrate 10ms) if available.
+* Respect prefers-reduced-motion.
+
+## Step F — Microcopy pass (UK haulage)
+
+Update labels without changing meaning:
+
+* “Enter VRM” → “Enter VRM (e.g., KX65ABC)”
+* “Odometer” → “Mileage (miles)”
+* “Tap: Pass · Hold: Report fault” → “Tap to pass · Hold to log defect”
+* “Trailer attached?” → “Trailer coupled?” / “Is a trailer currently coupled?”
+* “Choose check type” → “Select inspection type”
+* Empty states should be helpful and professional.
+
+## Step G — Screen-by-screen final polish
+
+### Driver Home
+
+* Improve hierarchy and whitespace.
+* Make search primary. Recent vehicles as cards.
+* Add clear empty state.
+
+### Vehicle Actions
+
+* Ensure the top vehicle identity card never looks blank: VRM, make/model, MOT status badge, last check time.
+
+### Trailer dialog
+
+* Make it fast: two large buttons, clear microcopy, no unnecessary text.
+
+### Check type
+
+* Card list with proper spacing and subtle dividers.
+
+### Safety Check
+
+* Keep sticky header and progress.
+* Odometer card should not overpower; balance contrast.
+* Section headers show icon + title + “x/y checked”.
+* Check items:
+
+  * tap = pass (emerald)
+  * long press = defect (red) opens bottom sheet
+  * show current state clearly (passed/defect/unset)
+* FAB:
+
+  * dynamic label (“Submit inspection”, “Continue”, “Fix 2 defects”, etc.)
+  * disable until required fields complete
+* Add skeletons when loading checksheet.
+
+## Step H — Output requirements
+
+When finished:
+
+1. Ensure code compiles.
+2. Run formatting/lint if available.
+3. Provide a concise summary of what changed.
+4. List the key token values and component API.
+
+---
+
+# Acceptance tests
+
+* UI feels premium, calm, consistent.
+* All tap targets ≥ 56px on mobile.
+* Every interactive element has pressed feedback.
+* Long-press shows hold indicator and then opens defect sheet.
+* No logic or API behaviour changed.
+* App is rebrandable: colours + logo driven by config/tokens.
+
+Now implement this polish pass in the repository.
