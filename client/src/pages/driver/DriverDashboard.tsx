@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DriverLayout } from "@/components/layout/AppShell";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
 import { TitanInput } from "@/components/titan-ui/Input";
 import { Search, Clock, ChevronRight, AlertTriangle, Truck, Plus, History, WifiOff, Fuel, AlertOctagon } from "lucide-react";
-import { api, Vehicle } from "@/lib/mockData";
+import { api } from "@/lib/api";
+import { session } from "@/lib/session";
+import type { Vehicle, Inspection, FuelEntry } from "@shared/schema";
 import { useBrand } from "@/hooks/use-brand";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,24 +16,63 @@ export default function DriverDashboard() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Vehicle[]>([]);
+  const [recentVehicles, setRecentVehicles] = useState<Vehicle[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
 
-  // Mock recents
-  const recentVehicles = api.getVehicles(currentCompany.id).slice(0, 3);
+  const user = session.getUser();
+  const company = session.getCompany();
 
-  const handleSearch = async () => {
-    if (!query) return;
-    setIsSearching(true);
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 600));
-    const matches = api.searchVehicles(currentCompany.id, query);
-    setResults(matches);
-    setHasSearched(true);
-    setIsSearching(false);
+  useEffect(() => {
+    if (company && user) {
+      loadRecents();
+      loadActivity();
+    }
+  }, [company, user]);
+
+  const loadRecents = async () => {
+    if (!company || !user) return;
+    try {
+      const recents = await api.getRecentVehicles(company.id, user.id, 3);
+      setRecentVehicles(recents);
+    } catch (error) {
+      console.error("Failed to load recent vehicles:", error);
+    }
   };
 
-  const handleSelectVehicle = (vehicleId: string) => {
+  const loadActivity = async () => {
+    if (!company || !user) return;
+    try {
+      const [inspectionData, fuelData] = await Promise.all([
+        api.getInspections(company.id, user.id, 7),
+        api.getFuelEntries(company.id, user.id, 7)
+      ]);
+      setInspections(inspectionData);
+      setFuelEntries(fuelData);
+    } catch (error) {
+      console.error("Failed to load activity:", error);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!query || !company) return;
+    setIsSearching(true);
+    try {
+      const matches = await api.searchVehicles(company.id, query);
+      setResults(matches);
+      setHasSearched(true);
+    } catch (error) {
+      console.error("Search failed:", error);
+      setResults([]);
+      setHasSearched(true);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectVehicle = (vehicleId: number) => {
     setLocation(`/driver/vehicle/${vehicleId}`);
   };
 
@@ -55,6 +96,7 @@ export default function DriverDashboard() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        data-testid="input-search-vrm"
                     />
                     <TitanButton 
                         size="icon" 
@@ -129,15 +171,15 @@ export default function DriverDashboard() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                     <div className="p-3 bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold">12</div>
+                        <div className="text-2xl font-bold">{inspections.length}</div>
                         <div className="text-[10px] uppercase tracking-wider opacity-60 mt-1">Checks</div>
                     </div>
                     <div className="p-3 bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold">3</div>
+                        <div className="text-2xl font-bold">{inspections.filter(i => i.status === 'FAIL').length}</div>
                         <div className="text-[10px] uppercase tracking-wider opacity-60 mt-1">Defects</div>
                     </div>
                     <div className="p-3 bg-white/5 rounded-xl">
-                        <div className="text-2xl font-bold">5</div>
+                        <div className="text-2xl font-bold">{fuelEntries.length}</div>
                         <div className="text-[10px] uppercase tracking-wider opacity-60 mt-1">Fuel</div>
                     </div>
                 </div>
@@ -149,19 +191,20 @@ export default function DriverDashboard() {
 }
 
 function VehicleCard({ vehicle, onSelect }: { vehicle: Vehicle, onSelect: () => void }) {
-  const isMotDueSoon = new Date(vehicle.motDue) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const isMotDueSoon = vehicle.motDue && new Date(vehicle.motDue) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   return (
     <TitanCard 
       onClick={onSelect}
       className="p-4 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer hover:border-primary/50 group bg-white shadow-titan-sm"
+      data-testid={`card-vehicle-${vehicle.id}`}
     >
       <div className="flex items-center gap-4">
         <div className="h-12 w-12 rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-primary/5 group-hover:border-primary/20 group-hover:text-primary transition-colors flex items-center justify-center text-slate-500">
             <Truck className="h-6 w-6" />
         </div>
         <div>
-          <h4 className="font-heading font-bold text-lg leading-none tracking-tight text-slate-900">{vehicle.reg}</h4>
+          <h4 className="font-heading font-bold text-lg leading-none tracking-tight text-slate-900">{vehicle.vrm}</h4>
           <p className="text-sm text-slate-500 mt-1">{vehicle.make} {vehicle.model}</p>
         </div>
       </div>

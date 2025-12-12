@@ -5,14 +5,17 @@ import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanInput } from "@/components/titan-ui/Input";
 import { TitanCard } from "@/components/titan-ui/Card";
 import { ArrowRight, Truck, ShieldCheck, QrCode } from "lucide-react";
-import { MOCK_COMPANIES } from "@/lib/mockData";
 import { motion } from "framer-motion";
+import { api } from "@/lib/api";
+import { session } from "@/lib/session";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { setCompanyId } = useBrand();
+  const { toast } = useToast();
   const [companyCode, setCompanyCode] = useState("APEX"); // Default for demo
-  const [driverId, setDriverId] = useState("");
+  const [pin, setPin] = useState("1234");
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"driver" | "manager">("driver");
 
@@ -20,19 +23,43 @@ export default function Landing() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API lookup
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // For demo, just pick the first company if code matches mock logic
-    // In real app, this would fetch config
-    setCompanyId(MOCK_COMPANIES[0].id);
-    
-    if (mode === "driver") {
+    try {
+      // Fetch company by code
+      const company = await api.getCompanyByCode(companyCode);
+      session.setCompany(company);
+      setCompanyId(String(company.id));
+
+      if (mode === "driver") {
+        // For prototype: create a mock driver session with PIN
+        // In production, this would validate PIN against backend
+        const mockDriver = {
+          id: 2, // John Doe from seed
+          companyId: company.id,
+          email: "driver1@apex.com",
+          name: "John Doe",
+          role: "DRIVER" as const,
+          pin: "1234",
+          active: true,
+          createdAt: new Date()
+        };
+        session.setUser(mockDriver);
         setLocation("/driver");
-    } else {
-        setLocation("/manager");
+      } else {
+        // Manager login would happen here
+        toast({
+          title: "Manager Login",
+          description: "Manager authentication not yet implemented",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Company not found",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -69,16 +96,20 @@ export default function Landing() {
                                     onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
                                     className="h-14 text-lg font-mono tracking-wide uppercase bg-slate-50 border-slate-200 focus:bg-white transition-colors"
                                     icon={<ShieldCheck className="h-5 w-5" />}
+                                    data-testid="input-company-code"
                                 />
                             </div>
                             
                             <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Driver ID</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Driver PIN</label>
                                 <TitanInput 
-                                    placeholder="Enter your ID" 
-                                    value={driverId}
-                                    onChange={(e) => setDriverId(e.target.value)}
+                                    placeholder="Enter 4-digit PIN" 
+                                    type="password"
+                                    value={pin}
+                                    onChange={(e) => setPin(e.target.value)}
                                     className="h-14 text-lg bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+                                    maxLength={4}
+                                    data-testid="input-pin"
                                 />
                             </div>
                         </div>
@@ -108,6 +139,7 @@ export default function Landing() {
                         size="lg" 
                         className="w-full h-14 text-base font-bold shadow-titan-lg shadow-primary/20"
                         isLoading={isLoading}
+                        data-testid="button-login"
                     >
                         {mode === "driver" ? "Start Shift" : "Access Console"} <ArrowRight className="ml-2 h-5 w-5" />
                     </TitanButton>
