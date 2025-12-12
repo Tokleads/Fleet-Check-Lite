@@ -109,7 +109,7 @@ export default function VehicleDetail() {
           <TitanButton variant="ghost" size="icon" onClick={() => setLocation("/driver")} className="h-10 w-10 -ml-2" data-testid="button-back">
             <ChevronLeft className="h-6 w-6 text-slate-600" />
           </TitanButton>
-          <h1 className="text-xl font-bold text-slate-900">Vehicle Actions</h1>
+          <h1 className="titan-title">Vehicle Actions</h1>
         </div>
 
         {/* Vehicle Identity Card */}
@@ -154,36 +154,34 @@ export default function VehicleDetail() {
         </TitanCard>
 
         {/* Action Grid */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="space-y-3">
           <ActionCard 
-            icon={<FileText className="h-6 w-6 text-blue-600" />}
-            title="Start Inspection"
+            icon={<FileText className="h-5 w-5 text-blue-600" />}
+            title="Start inspection"
             subtitle="Daily check or end of shift"
             onClick={handleStartInspection}
             primary
             testId="action-start-inspection"
           />
           <ActionCard 
-            icon={<Fuel className="h-6 w-6 text-emerald-600" />}
+            icon={<Fuel className="h-5 w-5 text-emerald-600" />}
             title="Fuel / AdBlue"
-            subtitle="Log fill-up & receipts"
+            subtitle="Log fill-up and receipts"
             onClick={() => setLocation(`/driver/fuel/${vehicle.id}`)}
             testId="action-fuel"
           />
           <ActionCard 
-            icon={<AlertOctagon className="h-6 w-6 text-amber-600" />}
-            title="Report Defect"
-            subtitle="Log defect with photos"
+            icon={<AlertOctagon className="h-5 w-5 text-amber-600" />}
+            title="Report fault"
+            subtitle="Log fault with photos"
             onClick={() => setLocation(`/driver/defect/${vehicle.id}`)}
             testId="action-defect"
           />
         </div>
 
         {/* Recent History */}
-        <div className="pt-4 space-y-3">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 ml-1">
-            Recent Activity
-          </h3>
+        <div className="space-y-3">
+          <div className="titan-section-label ml-1">Recent Activity</div>
           {recentInspections.length === 0 ? (
             <TitanCard className="p-6 text-center border-2 border-dashed border-slate-200 bg-slate-50/50">
               <p className="text-sm text-slate-500">No inspections yet for this vehicle</p>
@@ -281,67 +279,73 @@ export default function VehicleDetail() {
                   <h2 className="t-h2">Choose check type</h2>
                 </div>
 
-                <div className="flex-1 p-4 space-y-3 bg-gradient-to-b from-slate-50 to-white">
+                <div className="flex-1 p-4 space-y-3">
                   {/* Trailer checks only toggle */}
-                  <TitanCard 
-                    className="p-4 flex items-center justify-between cursor-pointer"
+                  <div 
+                    className="titan-card p-4 flex items-center justify-between cursor-pointer"
                     onClick={() => setOnlyTrailerInspections(!onlyTrailerInspections)}
                   >
                     <div>
-                      <div className="t-h3">Trailer checks only</div>
-                      <div className="t-sub">Show trailer-specific inspections and defects.</div>
+                      <div className="font-semibold text-slate-900">Trailer checks only</div>
+                      <div className="titan-helper">Show trailer-specific inspections.</div>
                     </div>
                     <div className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-colors ${
                       onlyTrailerInspections ? 'bg-primary border-primary text-white' : 'border-slate-300'
                     }`}>
                       {onlyTrailerInspections && <Check className="h-4 w-4" />}
                     </div>
-                  </TitanCard>
+                  </div>
 
                   {/* Checksheet options */}
                   {!onlyTrailerInspections && (
                     <>
-                      <TitanCard 
-                        variant="interactive"
-                        className="p-4 flex items-center gap-4"
+                      <button 
+                        className="titan-card titan-tap w-full p-4 flex items-center gap-3 text-left"
                         onClick={() => handleSelectChecksheet("end_of_shift")}
                         data-testid="checksheet-end-of-shift"
                       >
-                        <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
+                        <div className="h-11 w-11 rounded-xl bg-blue-50 grid place-items-center">
+                          <FileText className="h-5 w-5 text-blue-600" />
                         </div>
-                        <span className="flex-1 t-h3">End of shift inspection</span>
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
-                      </TitanCard>
+                        <div className="flex-1">
+                          <div className="text-[15px] font-semibold text-slate-900">End of shift inspection</div>
+                          <div className="titan-helper">Check vehicle at shift end</div>
+                        </div>
+                        <div className="text-slate-400">›</div>
+                      </button>
 
-                      <TitanCard 
-                        variant="interactive"
-                        className="p-4 flex items-center gap-4"
+                      <button 
+                        className="titan-card titan-tap w-full p-4 flex items-center gap-3 text-left"
                         onClick={() => handleSelectChecksheet("safety")}
                         data-testid="checksheet-safety"
                       >
-                        <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <FileText className="h-5 w-5 text-primary" />
+                        <div className="h-11 w-11 rounded-xl bg-blue-50 grid place-items-center">
+                          <FileText className="h-5 w-5 text-blue-600" />
                         </div>
-                        <span className="flex-1 t-h3">Safety check</span>
-                        <ChevronRight className="h-5 w-5 text-slate-400" />
-                      </TitanCard>
+                        <div className="flex-1">
+                          <div className="text-[15px] font-semibold text-slate-900">Safety check</div>
+                          <div className="titan-helper">Full vehicle safety inspection</div>
+                        </div>
+                        <div className="text-slate-400">›</div>
+                      </button>
                     </>
                   )}
 
                   {/* Trailer-only options */}
                   {onlyTrailerInspections && hasTrailer && (
-                    <TitanCard 
-                      variant="interactive"
-                      className="p-4 flex items-center gap-4"
+                    <button 
+                      className="titan-card titan-tap w-full p-4 flex items-center gap-3 text-left"
                       onClick={() => handleSelectChecksheet("safety")}
                     >
-                      <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-primary" />
+                      <div className="h-11 w-11 rounded-xl bg-blue-50 grid place-items-center">
+                        <FileText className="h-5 w-5 text-blue-600" />
                       </div>
-                      <span className="flex-1 t-h3">Trailer inspection</span>
-                      <ChevronRight className="h-5 w-5 text-slate-400" />
-                    </TitanCard>
+                      <div className="flex-1">
+                        <div className="text-[15px] font-semibold text-slate-900">Trailer inspection</div>
+                        <div className="titan-helper">Check coupled trailer</div>
+                      </div>
+                      <div className="text-slate-400">›</div>
+                    </button>
                   )}
 
                   {onlyTrailerInspections && !hasTrailer && (
@@ -378,22 +382,16 @@ function ActionCard({
     <button 
       onClick={onClick}
       data-testid={testId}
-      className={`
-        w-full rounded-2xl border text-left flex items-center gap-4 transition-all active:scale-[0.99] px-4 py-4
-        ${primary 
-          ? 'bg-white border-slate-200/80 shadow-sm' 
-          : 'bg-white border-slate-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-slate-300'
-        }
-      `}
+      className="titan-card titan-tap w-full text-left flex items-center gap-3 px-4 py-4 min-h-[68px]"
     >
-      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${primary ? 'bg-primary/10' : 'bg-slate-100'}`}>
+      <div className={`h-11 w-11 rounded-xl grid place-items-center ${primary ? 'bg-blue-50' : 'bg-slate-100'}`}>
         {icon}
       </div>
       <div className="flex-1">
-        <h3 className="font-semibold text-[15px] text-slate-900">{title}</h3>
-        <p className="text-[13px] text-slate-500">{subtitle}</p>
+        <div className="text-[15px] font-semibold text-slate-900">{title}</div>
+        <div className="titan-helper">{subtitle}</div>
       </div>
-      <ChevronRight className="h-5 w-5 text-slate-400" />
+      <div className="text-slate-400">›</div>
     </button>
   );
 }

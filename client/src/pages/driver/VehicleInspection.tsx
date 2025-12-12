@@ -402,31 +402,29 @@ export default function VehicleInspection() {
             />
           </div>
 
-          {/* Collapsible Sections - Control Bar Style */}
+          {/* Collapsible Sections - Checkpoint Style */}
           {sections.map((section) => {
             const { checked, total, complete } = getSectionProgress(section);
             return (
               <div key={section.id}>
-                {/* Section Header as Control Bar */}
+                {/* Section Header as Checkpoint */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className="w-full flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-[0.995] transition-all"
+                  className="titan-card titan-tap w-full flex items-center gap-3 px-4 py-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{section.icon}</span>
-                    <div className="text-left">
-                      <h3 className="font-semibold text-[15px] text-slate-900">{section.title}</h3>
-                      <p className="text-[12px] text-slate-500">{checked} of {total} checked</p>
-                    </div>
+                  <div className="h-9 w-9 rounded-xl bg-slate-100 grid place-items-center text-lg">
+                    {section.icon}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`h-7 min-w-[28px] px-2 rounded-full flex items-center justify-center text-xs font-semibold ${
-                      complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {complete ? <Check className="h-4 w-4" /> : checked}
-                    </div>
-                    {section.isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  <div className="flex-1 text-left">
+                    <div className="font-semibold text-slate-900">{section.title}</div>
+                    <div className="titan-helper">{checked} of {total} checked</div>
                   </div>
+                  <div className={`rounded-full text-[12px] font-semibold px-2 py-1 ${
+                    complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {complete ? <Check className="h-4 w-4" /> : checked}
+                  </div>
+                  {section.isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
                 </button>
 
                 {/* Section Items */}

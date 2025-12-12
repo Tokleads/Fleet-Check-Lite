@@ -1,0 +1,59 @@
+/* src/styles/titan.css - Global £50k UI Polish Layer */
+
+/* 1) Better default text rendering */
+html { 
+  -webkit-font-smoothing: antialiased; 
+  text-rendering: optimizeLegibility; 
+}
+
+/* 2) App background: slight warmth + depth */
+body {
+  background: linear-gradient(180deg, rgba(2,6,23,0.03) 0%, rgba(2,6,23,0.00) 55%);
+}
+
+/* 3) Consistent card "authority" */
+.titan-card {
+  border-radius: 1.25rem;
+  border: 1px solid rgba(15, 23, 42, .08);
+  box-shadow:
+    0 1px 1px rgba(0,0,0,.04),
+    0 10px 30px rgba(2,6,23,.06);
+  background: white;
+}
+
+/* 4) Tap feedback (feels expensive) */
+.titan-tap {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.titan-tap:active { 
+  transform: scale(.99); 
+}
+
+/* 5) Better focus ring */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.25);
+  border-radius: 12px;
+}
+
+/* 6) Spacing constants */
+.titan-page {
+  @apply px-4 space-y-4 pb-24;
+}
+
+/* 7) Typography hierarchy */
+.titan-title {
+  @apply text-[22px] font-semibold tracking-tight text-slate-900;
+}
+
+.titan-section-label {
+  @apply text-[12px] font-semibold tracking-widest text-slate-500 uppercase;
+}
+
+.titan-body {
+  @apply text-[14px] leading-[1.35];
+}
+
+.titan-helper {
+  @apply text-[13px] text-slate-500;
+}

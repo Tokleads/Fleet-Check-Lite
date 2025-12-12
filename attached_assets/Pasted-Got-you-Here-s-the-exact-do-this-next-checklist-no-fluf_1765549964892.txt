@@ -1,0 +1,214 @@
+Got you. Here’s the **exact “do this next” checklist** (no fluff). Start at #1 and don’t skip — each step compounds the “£50k UI” feel.
+
+## 1) Create one global UI “polish” layer (30 mins)
+
+**Goal:** every screen gets better instantly without editing each component.
+
+### Do this:
+
+* Create `src/styles/titan.css`
+* Import it in `main.tsx` (or `index.css`)
+
+Add these rules (copy/paste):
+
+```css
+/* src/styles/titan.css */
+
+/* 1) Better default text rendering */
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* 2) App background: slight warmth + depth */
+body {
+  background: linear-gradient(180deg, rgba(2,6,23,0.03) 0%, rgba(2,6,23,0.00) 55%);
+}
+
+/* 3) Consistent card “authority” */
+.titan-card {
+  border-radius: 1.25rem;              /* rounded-2xl */
+  border: 1px solid rgba(15, 23, 42, .08);
+  box-shadow:
+    0 1px 1px rgba(0,0,0,.04),
+    0 10px 30px rgba(2,6,23,.06);
+  background: white;
+}
+
+/* 4) Tap feedback (feels expensive) */
+.titan-tap {
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.titan-tap:active { transform: scale(.99); }
+
+/* 5) Better focus ring */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.25);
+  border-radius: 12px;
+}
+```
+
+Then: everywhere you have a card container, add:
+
+* `className="titan-card titan-tap"`
+
+That alone makes it look “paid”.
+
+---
+
+## 2) Fix your spacing system (20 mins)
+
+**Goal:** stop random padding/margins. Use only 3 paddings.
+
+### Do this:
+
+Pick these constants:
+
+* Screen padding: `px-4`
+* Section gap: `space-y-4`
+* Card padding: `p-4`
+
+Then enforce it:
+
+* All pages: wrap content in `div className="px-4 space-y-4 pb-24"`
+* All cards: `p-4`
+
+No exceptions unless absolutely needed.
+
+---
+
+## 3) Fix typography hierarchy (20 mins)
+
+**Goal:** everything currently looks same-weight.
+
+### Do this (use exactly):
+
+* Page title: `text-[22px] font-semibold tracking-tight`
+* Section label (uppercase): `text-[12px] font-semibold tracking-widest text-slate-500`
+* Body: `text-[14px] leading-[1.35]`
+* Helper/meta: `text-[13px] text-slate-500`
+
+Apply to:
+
+* “Driver Home”, “Vehicle Actions”, “Safety Check”, “Choose check type”
+
+---
+
+## 4) Make “Find Vehicle” look like the main action (30 mins)
+
+Your Home screen must feel like a command panel.
+
+### Do this:
+
+Wrap the input + button in a titan card:
+
+```tsx
+<div className="titan-card p-4 space-y-3">
+  <div className="text-[12px] font-semibold tracking-widest text-slate-500">
+    FIND VEHICLE
+  </div>
+
+  <div className="flex gap-3">
+    <Input className="h-12 rounded-xl font-semibold tracking-wider border-slate-300" placeholder="Enter VRM" />
+    <Button className="h-12 w-12 rounded-xl">🔍</Button>
+  </div>
+</div>
+```
+
+Then remove the extra empty space blocks below it (they make it feel unfinished).
+
+---
+
+## 5) Make “Vehicle identity” feel real (20 mins)
+
+The Vehicle Actions screen has that weak card at the top.
+
+### Do this:
+
+Replace that top box with:
+
+* VRM big
+* Make/model smaller
+* MOT pill
+* Last inspection line
+
+And give it `titan-card`.
+
+(If you want, paste your VehicleActions component here and I’ll rewrite just that block.)
+
+---
+
+## 6) Upgrade action cards into “decisions” (25 mins)
+
+Your 3 actions (Start Inspection / Fuel / Report Defect) should feel like high intent.
+
+### Do this:
+
+Each card should be:
+
+* `titan-card titan-tap`
+* Icon in a square badge
+* Chevron on right
+* Minimum height 68px
+
+Class template:
+
+```tsx
+<div className="titan-card titan-tap px-4 py-4 flex items-center gap-3">
+  <div className="h-11 w-11 rounded-xl bg-blue-50 grid place-items-center">…</div>
+  <div className="flex-1">
+    <div className="text-[15px] font-semibold">Start inspection</div>
+    <div className="text-[13px] text-slate-500">Daily check or end of shift</div>
+  </div>
+  <div className="text-slate-400">›</div>
+</div>
+```
+
+---
+
+## 7) Safety Check: make section headers feel like checkpoints (40 mins)
+
+Right now they’re a little “listy”.
+
+### Do this:
+
+* Make section header itself a `titan-card`
+* Add a progress pill on the right
+* Increase icon size
+
+Example header row:
+
+```tsx
+<div className="titan-card px-4 py-3 flex items-center gap-3">
+  <div className="h-9 w-9 rounded-xl bg-slate-100 grid place-items-center">💡</div>
+  <div className="flex-1">
+    <div className="font-semibold">Lights & Signals</div>
+    <div className="text-[13px] text-slate-500">0 of 2 checked</div>
+  </div>
+  <div className="rounded-full bg-slate-100 text-[12px] font-semibold px-2 py-1">0</div>
+</div>
+```
+
+---
+
+## 8) Add the 3 “premium” micro-interactions (25 mins)
+
+These make it feel expensive instantly.
+
+### Do this:
+
+1. Buttons/cards: `active:scale-[0.99] transition`
+2. Collapses: **easeOut** + **180ms**
+3. Progress bar: animate width over **250ms**
+
+Don’t overdo motion. One clean motion > lots of wobbly ones.
+
+---
+
+# Your next move (tell me which one)
+
+Pick ONE and I’ll be ultra-specific with your actual code:
+
+A) **Send me the file name / code snippet for your Home (Driver Dashboard) component**, and I’ll rewrite only the layout + classes to hit the polish.
+
+B) **Send me SafetyCheck component code**, and I’ll do the same for sections + rows + defect sheet.
+
+If you paste either component here, I’ll return it ready-to-drop-in.
