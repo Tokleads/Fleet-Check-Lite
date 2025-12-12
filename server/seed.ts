@@ -30,7 +30,8 @@ async function seed() {
     companyId: company.id,
     email: "manager@apex.com",
     name: "Sarah Connor",
-    role: "MANAGER"
+    role: "MANAGER",
+    pin: "0000"
   }).returning();
 
   // Create drivers
@@ -84,7 +85,7 @@ async function seed() {
   console.log(`   Company Code: APEX`);
   console.log(`   Driver 1: ${driver1.email} (PIN: 1234)`);
   console.log(`   Driver 2: ${driver2.email} (PIN: 5678)`);
-  console.log(`   Manager: ${manager.email}`);
+  console.log(`   Manager: ${manager.email} (PIN: 0000)`);
   
   process.exit(0);
 }

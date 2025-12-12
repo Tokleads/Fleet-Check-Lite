@@ -8,6 +8,8 @@ import DriverDashboard from "@/pages/driver/DriverDashboard";
 import VehicleDetail from "@/pages/driver/VehicleDetail";
 import VehicleInspection from "@/pages/driver/VehicleInspection";
 import FuelEntry from "@/pages/driver/FuelEntry";
+import ManagerLogin from "@/pages/manager/ManagerLogin";
+import ManagerDashboard from "@/pages/manager/Dashboard";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +20,8 @@ function Router() {
       <Route path="/driver/vehicle/:id" component={VehicleDetail} />
       <Route path="/driver/inspection/:id" component={VehicleInspection} />
       <Route path="/driver/fuel/:id" component={FuelEntry} />
+      <Route path="/manager/login" component={ManagerLogin} />
+      <Route path="/manager" component={ManagerDashboard} />
       <Route component={NotFound} />
     </Switch>
   );
