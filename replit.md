@@ -77,12 +77,27 @@ client/src/components/titan-ui/ - Custom UI components
 
 ## Recent Changes
 
+### 2025-12-12 (Latest)
+- Added tenant configuration system (client/src/config/tenant.ts) for white-label branding
+- Wired tenant config to header, landing page, and brand context
+- Enhanced Vehicle Identity Card with Last Check date, MOT Due, and Status columns
+- DC European Haulage Ltd branding with custom logo
+
 ### 2025-12-12
 - Connected frontend to PostgreSQL database (replaced mock data)
 - Added DVSA API integration with OAuth2 authentication
 - Created seed script with demo company and 15 vehicles
 - Updated driver dashboard to use real API data
 - Stored DVSA credentials securely as Replit secrets
+
+## White-Label Configuration
+
+Edit `client/src/config/tenant.ts` to rebrand for different transport companies:
+- `companyName` - Display name shown in header and login
+- `logoUrl` - Path to logo image in public folder
+- `colors.primary` - Primary hex color for branding
+- `colors.primaryHsl` - HSL version for CSS variables
+- `features` - Enable/disable fuel, AdBlue, trailers, DVSA integration
 
 ## User Preferences
 - Mobile-first driver experience (56px tap targets)
