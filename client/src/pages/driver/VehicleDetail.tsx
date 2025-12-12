@@ -226,8 +226,11 @@ export default function VehicleDetail() {
               className="fixed inset-0 z-50 flex items-center justify-center p-6"
             >
               <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-                <p className="text-lg font-medium text-slate-800 text-center mb-8">
-                  Does this asset have a trailer attached?
+                <h3 className="text-[18px] font-semibold text-slate-900 text-center mb-2">
+                  Trailer attached?
+                </h3>
+                <p className="text-[13px] text-slate-500 text-center mb-6">
+                  Is a trailer coupled to this unit right now?
                 </p>
                 <div className="flex gap-3">
                   <TitanButton 
@@ -236,14 +239,14 @@ export default function VehicleDetail() {
                     onClick={() => handleTrailerAnswer(true)}
                     data-testid="button-trailer-yes"
                   >
-                    Yes
+                    Yes, trailer
                   </TitanButton>
                   <TitanButton 
                     className="flex-1 h-12"
                     onClick={() => handleTrailerAnswer(false)}
                     data-testid="button-trailer-no"
                   >
-                    No
+                    No trailer
                   </TitanButton>
                 </div>
               </div>
@@ -376,23 +379,21 @@ function ActionCard({
       onClick={onClick}
       data-testid={testId}
       className={`
-        w-full p-4 rounded-xl border text-left flex items-center gap-4 transition-all active:scale-[0.98]
+        w-full rounded-2xl border text-left flex items-center gap-4 transition-all active:scale-[0.99] px-4 py-4
         ${primary 
-          ? 'bg-white border-primary/20 shadow-md ring-1 ring-primary/10' 
-          : 'bg-white border-slate-200 shadow-sm hover:border-slate-300'
+          ? 'bg-white border-slate-200/80 shadow-sm' 
+          : 'bg-white border-slate-200/70 shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:border-slate-300'
         }
       `}
     >
-      <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${primary ? 'bg-primary/5' : 'bg-slate-50'}`}>
+      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${primary ? 'bg-primary/10' : 'bg-slate-100'}`}>
         {icon}
       </div>
-      <div>
-        <h3 className="font-bold text-slate-900">{title}</h3>
-        <p className="text-xs text-slate-500 font-medium">{subtitle}</p>
+      <div className="flex-1">
+        <h3 className="font-semibold text-[15px] text-slate-900">{title}</h3>
+        <p className="text-[13px] text-slate-500">{subtitle}</p>
       </div>
-      <div className="ml-auto">
-        <ChevronRight className="h-5 w-5 text-slate-300" />
-      </div>
+      <ChevronRight className="h-5 w-5 text-slate-400" />
     </button>
   );
 }

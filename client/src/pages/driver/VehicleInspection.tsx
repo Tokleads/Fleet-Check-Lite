@@ -357,83 +357,88 @@ export default function VehicleInspection() {
   return (
     <DriverLayout>
       <div className="pb-28">
-        {/* Sticky Header with Progress */}
-        <div className="sticky top-0 bg-white z-30 -mx-4 px-4 pt-2 pb-3 border-b border-slate-100 shadow-sm">
+        {/* Sticky Header with Progress - Tighter Hierarchy */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur z-30 -mx-4 px-4 pt-2 pb-3 border-b border-slate-200/60">
           <div className="flex items-center gap-3 mb-3">
             <TitanButton variant="ghost" size="icon" onClick={() => setLocation(`/driver/vehicle/${vehicle.id}`)} className="h-9 w-9 -ml-2">
               <ChevronLeft className="h-5 w-5 text-slate-600" />
             </TitanButton>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold text-slate-900 truncate">{checkTitle}</h1>
-              <p className="text-xs text-slate-500">{vehicle.vrm} • {checkDate}</p>
+              <h1 className="text-[20px] font-semibold tracking-tight text-slate-900 truncate">{checkTitle}</h1>
+              <p className="text-[13px] text-slate-500">{vehicle.vrm} · {checkDate}</p>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold text-primary">{checkedItems.length}/{allItems.length}</div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wide">Complete</div>
+              <div className="text-[13px] font-semibold text-primary">{checkedItems.length} of {allItems.length}</div>
+              <div className="text-[11px] text-slate-400">completed</div>
             </div>
           </div>
           
           {/* Progress Bar */}
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <motion.div 
-              className={`h-full ${failedItems.length > 0 ? 'bg-amber-500' : 'bg-green-500'}`}
+              className={`h-full ${failedItems.length > 0 ? 'bg-amber-500' : 'bg-primary'}`}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>
           {failedItems.length > 0 && (
-            <p className="text-xs text-amber-600 mt-1 font-medium">{failedItems.length} defect(s) recorded</p>
+            <p className="text-[12px] text-amber-600 mt-1.5 font-medium">{failedItems.length} fault(s) recorded</p>
           )}
         </div>
 
         <div className="space-y-3 pt-4">
-          {/* Odometer Card - Premium */}
-          <TitanCard className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white border-0 shadow-lg">
-            <label className="t-cap text-white/60 block mb-2">Odometer (miles)</label>
-            <TitanInput
+          {/* Odometer Card - Data Entry Control */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-5 shadow-lg">
+            <label className="text-[11px] uppercase tracking-wider text-white/70 block mb-2">Odometer (miles)</label>
+            <input
               type="number"
-              placeholder="Enter current reading"
+              inputMode="numeric"
+              placeholder="Enter odometer reading"
               value={odometer}
               onChange={(e) => setOdometer(e.target.value)}
-              className="font-mono text-xl bg-white/10 border-white/20 text-white placeholder:text-white/40 h-14 focus:ring-white/20"
+              className="w-full bg-white/10 border border-white/20 text-white placeholder:text-white/60 h-12 rounded-xl px-4 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-white/30"
               data-testid="input-odometer"
             />
-          </TitanCard>
+          </div>
 
-          {/* Collapsible Sections */}
+          {/* Collapsible Sections - Control Bar Style */}
           {sections.map((section) => {
             const { checked, total, complete } = getSectionProgress(section);
             return (
-              <TitanCard key={section.id} className="overflow-hidden">
-                {/* Section Header */}
+              <div key={section.id}>
+                {/* Section Header as Control Bar */}
                 <button
                   onClick={() => toggleSection(section.id)}
-                  className="w-full p-4 flex items-center gap-3 text-left hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] active:scale-[0.995] transition-all"
                 >
-                  <span className="text-xl">{section.icon}</span>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-800">{section.title}</h3>
-                    <p className="text-xs text-slate-500">{checked}/{total} checked</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{section.icon}</span>
+                    <div className="text-left">
+                      <h3 className="font-semibold text-[15px] text-slate-900">{section.title}</h3>
+                      <p className="text-[12px] text-slate-500">{checked} of {total} checked</p>
+                    </div>
                   </div>
-                  <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                    complete ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    {complete ? <Check className="h-4 w-4" /> : checked}
+                  <div className="flex items-center gap-2">
+                    <div className={`h-7 min-w-[28px] px-2 rounded-full flex items-center justify-center text-xs font-semibold ${
+                      complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {complete ? <Check className="h-4 w-4" /> : checked}
+                    </div>
+                    {section.isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
                   </div>
-                  {section.isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
                 </button>
 
                 {/* Section Items */}
                 <AnimatePresence>
                   {section.isExpanded && (
                     <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: "auto" }}
-                      exit={{ height: 0 }}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="border-t border-slate-100">
+                      <div className="pt-2 space-y-2">
                         {section.items.map((item, idx) => (
                           <CheckItemRow
                             key={item.id}
@@ -447,7 +452,7 @@ export default function VehicleInspection() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </TitanCard>
+              </div>
             );
           })}
         </div>
@@ -540,12 +545,12 @@ export default function VehicleInspection() {
                 : !canSubmit 
                   ? `Complete All Checks (${checkedItems.length}/${allItems.length})`
                   : failedItems.length > 0 
-                    ? `Submit with ${failedItems.length} Fault(s)`
-                    : `Submit ${checkTitle}`
+                    ? `Submit with ${failedItems.length} fault(s)`
+                    : `Submit check`
               }
             </TitanButton>
-            {canSubmit && (
-              <p className="text-center t-sub">Submitted to Transport — timestamped and saved.</p>
+            {canSubmit && failedItems.length === 0 && (
+              <p className="text-center text-[12px] text-slate-500">Signed off to Transport Manager</p>
             )}
           </div>
         </div>
@@ -554,7 +559,7 @@ export default function VehicleInspection() {
   );
 }
 
-// Check Item Row Component - Premium £50k UI
+// Check Item Row - Industrial Checklist Plate
 function CheckItemRow({ 
   item, 
   isLast, 
@@ -604,17 +609,17 @@ function CheckItemRow({
       onMouseUp={handleTouchEnd}
       onMouseLeave={handleTouchCancel}
       className={`
-        px-4 py-4 flex items-center gap-3 cursor-pointer select-none transition-all rounded-2xl mx-1 my-1
-        ${isPressed ? 'bg-slate-100 scale-[0.99]' : ''}
-        ${item.status === 'pass' ? 'bg-emerald-50/60 border border-emerald-200' : ''}
-        ${item.status === 'fail' ? 'bg-amber-50/70 border border-amber-200' : ''}
-        ${item.status === 'unchecked' ? 'bg-white border border-slate-200/70 hover:bg-slate-50/60 active:bg-slate-50' : ''}
+        min-h-[60px] rounded-2xl border px-4 py-3 flex items-center gap-3 cursor-pointer select-none transition-all shadow-[0_1px_1px_rgba(0,0,0,0.04)]
+        ${isPressed ? 'scale-[0.99] bg-slate-50' : ''}
+        ${item.status === 'pass' ? 'bg-emerald-50/80 border-emerald-200' : ''}
+        ${item.status === 'fail' ? 'bg-amber-50/80 border-amber-200' : ''}
+        ${item.status === 'unchecked' ? 'bg-white border-slate-200/70 active:bg-slate-50' : ''}
       `}
     >
       <div className={`
-        h-11 w-11 rounded-xl flex items-center justify-center text-sm font-bold transition-all shadow-sm
-        ${item.status === 'pass' ? 'bg-emerald-500 text-white' : ''}
-        ${item.status === 'fail' ? 'bg-amber-500 text-white' : ''}
+        h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all
+        ${item.status === 'pass' ? 'bg-emerald-500 text-white shadow-sm' : ''}
+        ${item.status === 'fail' ? 'bg-amber-500 text-white shadow-sm' : ''}
         ${item.status === 'unchecked' ? 'bg-slate-100 text-slate-400 border-2 border-dashed border-slate-300' : ''}
       `}>
         {item.status === 'pass' && <Check className="h-5 w-5" />}
@@ -623,18 +628,18 @@ function CheckItemRow({
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className={`t-body font-medium ${item.status === 'unchecked' ? 'text-slate-800' : item.status === 'pass' ? 'text-emerald-900' : 'text-amber-900'}`}>
+        <p className={`text-[14px] font-medium leading-snug ${item.status === 'unchecked' ? 'text-slate-800' : item.status === 'pass' ? 'text-emerald-900' : 'text-amber-900'}`}>
           {item.label}
         </p>
         {item.status === 'unchecked' && (
-          <p className="t-sub">Tap: Pass · Hold: Report fault</p>
+          <p className="text-[12px] text-slate-500 mt-0.5">Tap: Pass · Hold: Report fault</p>
         )}
         {item.status === 'pass' && (
-          <p className="text-[13px] text-emerald-600 font-medium">Passed</p>
+          <p className="text-[12px] text-emerald-600 font-medium mt-0.5">Passed</p>
         )}
         {item.status === 'fail' && (
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Fix required</span>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Fault logged</span>
             {item.defectNote && <span className="text-[12px] text-amber-700 truncate">{item.defectNote}</span>}
           </div>
         )}

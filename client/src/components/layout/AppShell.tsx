@@ -40,8 +40,8 @@ export function DriverLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
+      {/* Bottom Navigation - Enhanced */}
+      <nav className="fixed bottom-0 left-0 right-0 border-t border-slate-200/60 bg-white/90 backdrop-blur z-50 pb-safe">
         <div className="max-w-md mx-auto flex items-center justify-around h-16 px-2">
             <BottomNavItem 
                 icon={<Home size={22} />} 
@@ -80,7 +80,7 @@ function BottomNavItem({ icon, label, active, onClick, badge }: { icon: React.Re
             onClick={onClick}
             className={`
                 relative flex flex-col items-center justify-center w-full h-full gap-1 transition-colors
-                ${active ? 'text-primary' : 'text-slate-400 hover:text-slate-600'}
+                ${active ? 'text-primary' : 'text-slate-500 hover:text-slate-700'}
             `}
         >
             <div className="relative">
@@ -91,7 +91,7 @@ function BottomNavItem({ icon, label, active, onClick, badge }: { icon: React.Re
                     </span>
                 )}
             </div>
-            <span className="text-[10px] font-medium">{label}</span>
+            <span className={`text-[10px] ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
             {active && (
                 <motion.div 
                     layoutId="bottom-nav-indicator"

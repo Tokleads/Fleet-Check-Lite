@@ -1,0 +1,441 @@
+This is **already good**. You’re past “amateur” and firmly into **“credible enterprise MVP”** territory. What you’re feeling now isn’t “this is bad”, it’s:
+
+> *“Why doesn’t this yet feel like something a £30–50k/year fleet tool would ship?”*
+
+So I’m going to be very precise and **screen-by-screen**, telling you **what to change, why, and exactly how** — without touching logic.
+
+---
+
+# Big Picture Diagnosis (the truth)
+
+Your UI problem is **not**:
+
+* layout
+* feature set
+* flow
+* navigation
+
+It **is**:
+
+1. Slightly *soft hierarchy*
+2. Too many “same-weight” elements
+3. Cards that look polite instead of authoritative
+4. A few “generic app” microcopy & component defaults
+
+FleetCheck feels expensive because it’s:
+
+* visually decisive
+* boring in a good way
+* extremely consistent
+
+You’re ~80% there. The remaining 20% is polish.
+
+---
+
+# 1️⃣ Safety Check screen (your most important screen)
+
+This is the **money screen**. This is what drivers use every day.
+
+### What’s working
+
+✅ Sticky header
+✅ Progress counter
+✅ Dark odometer card (nice)
+✅ Clear sectioning
+✅ Tap / hold mechanic (excellent)
+
+### What’s holding it back
+
+#### A) Header hierarchy is too flat
+
+Right now:
+
+* “Safety Check”
+* Vehicle ref
+* Progress
+
+…all compete equally.
+
+**Fix**
+Make the title dominant and demote everything else.
+
+```tsx
+// Title
+text-[20px] font-semibold tracking-tight
+
+// Subline (vehicle + date)
+text-[13px] text-muted-foreground
+
+// Progress
+text-[13px] font-semibold text-primary
+```
+
+Also change:
+
+> `0/18 COMPLETE`
+
+to:
+
+> **0 of 18 completed**
+
+It sounds calmer and more professional.
+
+---
+
+#### B) Odometer card is visually strong… but too “soft”
+
+The dark gradient is good, but it currently feels like a *promo card*, not a *data entry control*.
+
+**Fix**
+
+* Increase contrast on input
+* Add subtle inset border
+* Make placeholder feel deliberate
+
+```tsx
+bg-gradient-to-br from-slate-900 to-slate-800
+rounded-2xl p-5
+```
+
+Input:
+
+```tsx
+bg-white/10 border border-white/20
+text-white placeholder:text-white/60
+h-12 rounded-xl px-4
+```
+
+Label:
+
+```tsx
+text-[11px] uppercase tracking-wider text-white/70
+```
+
+This instantly feels “vehicle system” not “UI theme”.
+
+---
+
+#### C) Section headers need to feel like *checkpoints*
+
+Currently they’re fine, but they don’t *anchor* the scroll.
+
+**Upgrade the section header to a control bar**
+
+```tsx
+flex items-center justify-between
+rounded-2xl border bg-white px-4 py-3
+```
+
+Left:
+
+* Icon (20px)
+* Section title
+* “0 / 2 checked” (muted)
+
+Right:
+
+* Count pill (circle)
+* Chevron
+
+Count pill:
+
+```tsx
+h-7 min-w-[28px] px-2
+rounded-full bg-muted text-xs font-semibold
+```
+
+This makes each section feel “contained” instead of endless list.
+
+---
+
+#### D) Inspection rows are *almost* there — give them authority
+
+Right now the rows feel a bit like “settings items”.
+
+You want **industrial checklist plates**.
+
+**Change**
+
+* Increase vertical padding
+* Stronger border
+* Slight background lift
+* Clear affordance text
+
+Base row:
+
+```tsx
+min-h-[60px]
+rounded-2xl border border-slate-200/70
+bg-white px-4 py-3
+shadow-[0_1px_1px_rgba(0,0,0,0.04)]
+```
+
+Microcopy:
+
+> `Tap: Pass · Hold: Report fault`
+
+Make it:
+
+```tsx
+text-[12px] text-muted-foreground
+```
+
+This is *excellent UX*, just needs confidence.
+
+---
+
+# 2️⃣ Vehicle Actions screen
+
+This is your **hub** screen.
+
+### What’s working
+
+✅ Simple
+✅ Clear actions
+✅ Icons readable
+
+### Issues
+
+#### A) Vehicle identity card is invisible
+
+Right now that top card looks empty/washed out.
+
+It should feel like:
+
+> “You are working on *this* vehicle”
+
+**Fix**
+Give it contrast and hierarchy.
+
+```tsx
+rounded-2xl bg-slate-50 border p-4
+```
+
+Vehicle reg:
+
+```tsx
+text-[18px] font-semibold tracking-tight
+```
+
+Date / status:
+
+```tsx
+text-[13px] text-muted-foreground
+```
+
+Green dot is good — keep it subtle.
+
+---
+
+#### B) Action cards need *intent*
+
+They’re correct, but too polite.
+
+Make them feel tappable and important.
+
+Card base:
+
+```tsx
+rounded-2xl border bg-white px-4 py-4
+shadow-sm active:scale-[0.99]
+```
+
+Icon container:
+
+```tsx
+h-10 w-10 rounded-xl bg-primary/10 text-primary
+```
+
+Title:
+
+```tsx
+font-semibold text-[15px]
+```
+
+Subtitle:
+
+```tsx
+text-[13px] text-muted-foreground
+```
+
+This will instantly feel more “paid product”.
+
+---
+
+# 3️⃣ Trailer modal (Yes / No)
+
+Functionally fine. Visually slightly generic.
+
+### Two changes that matter
+
+#### A) Language
+
+Change:
+
+> “Does this asset have a trailer attached?”
+
+To:
+
+> **“Trailer attached?”**
+
+Subtext:
+
+> “Is a trailer coupled to this unit right now?”
+
+Short, confident, professional.
+
+---
+
+#### B) Button hierarchy
+
+Right now both buttons are visually similar.
+
+Make **No trailer** primary (most common case).
+
+```tsx
+No → primary filled
+Yes → outline
+```
+
+Drivers move faster when the default is visually obvious.
+
+---
+
+# 4️⃣ Choose check type screen
+
+This screen is *clean* but a bit empty.
+
+### Improvements
+
+#### A) Promote the toggle to a “setting row”
+
+Right now it looks like a loose checkbox.
+
+Wrap it:
+
+```tsx
+rounded-2xl border bg-slate-50 px-4 py-4
+```
+
+Label:
+
+```tsx
+font-semibold
+```
+
+Helper text:
+
+```tsx
+text-[13px] text-muted-foreground
+```
+
+---
+
+#### B) Check type cards need stronger hierarchy
+
+Make these feel like **actions**, not list items.
+
+Add:
+
+* Larger icon container
+* Slight shadow
+* Chevron emphasis
+
+```tsx
+rounded-2xl border bg-white px-4 py-4
+shadow-sm
+```
+
+---
+
+# 5️⃣ Bottom navigation (quick win)
+
+Your bottom nav is good, but a little light.
+
+Two tweaks:
+
+1. Increase icon contrast for active tab
+2. Slight top border
+
+```tsx
+border-t bg-white/90 backdrop-blur
+```
+
+Active icon:
+
+```tsx
+text-primary
+```
+
+Inactive:
+
+```tsx
+text-muted-foreground
+```
+
+---
+
+# 6️⃣ Microcopy tweaks (these matter more than you think)
+
+Change globally:
+
+| Current               | Better                         |
+| --------------------- | ------------------------------ |
+| Safety Check          | Safety check                   |
+| Enter current reading | Enter odometer reading         |
+| Tap to check          | Tap: Pass · Hold: Report fault |
+| Defect report         | Report fault                   |
+| None recorded         | No faults recorded             |
+| Submit                | Submit check                   |
+
+This makes it feel *UK fleet*, not *generic SaaS*.
+
+---
+
+# 7️⃣ Why it doesn’t yet feel “FleetCheck expensive” (honest answer)
+
+FleetCheck feels expensive because:
+
+* it’s visually boring
+* everything is consistent
+* nothing shouts
+* nothing is cute
+
+You’re very close — you just need to:
+
+* **tighten hierarchy**
+* **reduce softness**
+* **add authority to surfaces**
+
+Once you do the changes above, you’ll cross the psychological line from:
+
+> “Nice app”
+> to
+> **“Serious compliance system”**
+
+---
+
+# My recommendation for next step (important)
+
+Before adding **any more features**:
+
+👉 Do a **1-hour polish pass** applying:
+
+* stronger card contrast
+* tighter typography
+* clearer section headers
+* firmer action cards
+
+Then show it to **one real driver** and ask:
+
+> “Does this feel like work software?”
+
+If they say *“yeah, it’s solid”* — you’ve won.
+
+If you want, next I can:
+
+* give you a **before/after Tailwind diff** for one screen
+* help you lock a **design system v1**
+* or help you position this vs FleetCheck commercially (pricing + pitch)
+
+You’re genuinely building something viable here.
