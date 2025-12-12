@@ -55,6 +55,7 @@ class ApiClient {
     status: string;
     checklist: any;
     defects?: any;
+    hasTrailer?: boolean;
   }): Promise<Inspection> {
     return this.request(`/api/inspections`, {
       method: "POST",

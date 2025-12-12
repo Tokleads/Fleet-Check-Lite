@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { DriverLayout } from "@/components/layout/AppShell";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
 import { TitanInput } from "@/components/titan-ui/Input";
-import { useLocation, useRoute } from "wouter";
+import { useLocation, useRoute, useSearch } from "wouter";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import type { Vehicle } from "@shared/schema";
@@ -30,7 +30,7 @@ interface Section {
   isExpanded: boolean;
 }
 
-const INITIAL_SECTIONS: Omit<Section, "isExpanded">[] = [
+const VEHICLE_SECTIONS: Omit<Section, "isExpanded">[] = [
   {
     id: "lights",
     title: "Lights & Signals",
@@ -93,15 +93,80 @@ const INITIAL_SECTIONS: Omit<Section, "isExpanded">[] = [
   },
 ];
 
+const TRAILER_SECTIONS: Omit<Section, "isExpanded">[] = [
+  {
+    id: "coupling",
+    title: "Coupling",
+    icon: "🔗",
+    items: [
+      { id: "fifth_wheel", label: "Fifth wheel / coupling secure", status: "unchecked" },
+      { id: "air_lines", label: "Air lines / electrical connections", status: "unchecked" },
+      { id: "landing_gear", label: "Landing gear / props", status: "unchecked" },
+    ]
+  },
+  {
+    id: "trailer_lights",
+    title: "Trailer Lights",
+    icon: "💡",
+    items: [
+      { id: "trailer_lamps", label: "Trailer lamps / indicators / stoplamps", status: "unchecked" },
+      { id: "trailer_reflectors", label: "Trailer reflectors / markers", status: "unchecked" },
+    ]
+  },
+  {
+    id: "trailer_body",
+    title: "Trailer Body",
+    icon: "📦",
+    items: [
+      { id: "trailer_body", label: "Trailer body / curtains / doors", status: "unchecked" },
+      { id: "trailer_floor", label: "Trailer floor condition", status: "unchecked" },
+      { id: "trailer_roof", label: "Trailer roof condition", status: "unchecked" },
+    ]
+  },
+  {
+    id: "trailer_tyres",
+    title: "Trailer Tyres & Wheels",
+    icon: "🔘",
+    items: [
+      { id: "trailer_tyres", label: "Trailer tyre condition / wear", status: "unchecked" },
+      { id: "trailer_wheels", label: "Trailer wheels condition", status: "unchecked" },
+    ]
+  },
+  {
+    id: "trailer_brakes",
+    title: "Trailer Brakes",
+    icon: "⚙️",
+    items: [
+      { id: "trailer_brakes", label: "Trailer brakes operation", status: "unchecked" },
+      { id: "abs_warning", label: "ABS warning light", status: "unchecked" },
+    ]
+  },
+];
+
 export default function VehicleInspection() {
   const [, params] = useRoute("/driver/inspection/:id");
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const { toast } = useToast();
+
+  // Parse URL params
+  const urlParams = new URLSearchParams(searchString);
+  const inspectionType = urlParams.get("type") || "safety";
+  const hasTrailer = urlParams.get("trailer") === "true";
+
+  // Build the sections based on type and trailer
+  const initialSections = useMemo(() => {
+    const baseSections = [...VEHICLE_SECTIONS];
+    if (hasTrailer) {
+      return [...baseSections, ...TRAILER_SECTIONS];
+    }
+    return baseSections;
+  }, [hasTrailer]);
 
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sections, setSections] = useState<Section[]>(
-    INITIAL_SECTIONS.map((s, i) => ({ ...s, isExpanded: i === 0 }))
+    initialSections.map((s, i) => ({ ...s, isExpanded: i === 0 }))
   );
   const [odometer, setOdometer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +176,9 @@ export default function VehicleInspection() {
 
   const company = session.getCompany();
   const user = session.getUser();
+  
+  // Format title based on inspection type
+  const checkTitle = inspectionType === "end_of_shift" ? "End of Shift Check" : "Safety Check";
   const checkDate = new Date().toLocaleString("en-GB", {
     day: "2-digit",
     month: "2-digit", 
@@ -233,15 +301,19 @@ export default function VehicleInspection() {
         }))
       );
 
+      // Map inspection type to database value
+      const dbType = inspectionType === "end_of_shift" ? "END_OF_SHIFT" : "SAFETY_CHECK";
+
       await api.createInspection({
         companyId: company.id,
         vehicleId: vehicle.id,
         driverId: user.id,
-        type: "DAILY",
+        type: dbType,
         odometer: Number(odometer),
         status: failedItems.length > 0 ? "FAIL" : "PASS",
         checklist,
         defects: failedItems.length > 0 ? failedItems.map(i => ({ item: i.label, note: i.defectNote })) : null,
+        hasTrailer: hasTrailer,
       });
 
       toast({
@@ -292,7 +364,7 @@ export default function VehicleInspection() {
               <ChevronLeft className="h-5 w-5 text-slate-600" />
             </TitanButton>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-bold text-slate-900 truncate">Safety Check</h1>
+              <h1 className="text-base font-bold text-slate-900 truncate">{checkTitle}</h1>
               <p className="text-xs text-slate-500">{vehicle.vrm} • {checkDate}</p>
             </div>
             <div className="text-right">
@@ -469,7 +541,7 @@ export default function VehicleInspection() {
                   ? `Complete All Checks (${checkedItems.length}/${allItems.length})`
                   : failedItems.length > 0 
                     ? `Submit with ${failedItems.length} Defect(s)`
-                    : "Submit Safety Check ✓"
+                    : `Submit ${checkTitle} ✓`
               }
             </TitanButton>
           </div>

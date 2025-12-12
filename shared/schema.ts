@@ -80,9 +80,10 @@ export const inspections = pgTable("inspections", {
   companyId: integer("company_id").references(() => companies.id).notNull(),
   vehicleId: integer("vehicle_id").references(() => vehicles.id).notNull(),
   driverId: integer("driver_id").references(() => users.id).notNull(),
-  type: varchar("type", { length: 50 }).notNull(), // DAILY | END_OF_SHIFT | TRAILER
+  type: varchar("type", { length: 50 }).notNull(), // SAFETY_CHECK | END_OF_SHIFT
   odometer: integer("odometer").notNull(),
   status: varchar("status", { length: 20 }).notNull(), // PASS | FAIL | PENDING
+  hasTrailer: boolean("has_trailer").default(false), // Whether trailer was attached
   checklist: jsonb("checklist").notNull(), // Array of check items with pass/fail
   defects: jsonb("defects"), // Array of defect notes
   driveFolderId: text("drive_folder_id"),

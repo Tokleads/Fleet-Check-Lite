@@ -6,7 +6,10 @@ import { useLocation, useRoute } from "wouter";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import type { Vehicle, Inspection } from "@shared/schema";
-import { ChevronLeft, Truck, FileText, Fuel, AlertOctagon, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, Truck, FileText, Fuel, AlertOctagon, ChevronRight, Loader2, X, Check, Square } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+type DialogState = "none" | "trailer" | "checksheet";
 
 export default function VehicleDetail() {
   const [, params] = useRoute("/driver/vehicle/:id");
@@ -18,6 +21,11 @@ export default function VehicleDetail() {
     valid: boolean;
     expiryDate: string | null;
   } | null>(null);
+  
+  // Dialog states
+  const [dialogState, setDialogState] = useState<DialogState>("none");
+  const [hasTrailer, setHasTrailer] = useState<boolean | null>(null);
+  const [onlyTrailerInspections, setOnlyTrailerInspections] = useState(false);
 
   const company = session.getCompany();
   const user = session.getUser();
@@ -34,13 +42,11 @@ export default function VehicleDetail() {
       const vehicleData = await api.getVehicle(id);
       setVehicle(vehicleData);
 
-      // Try to fetch MOT status from DVSA
       if (vehicleData.vrm) {
         const mot = await api.getMotStatus(vehicleData.vrm);
         setMotStatus(mot);
       }
 
-      // Load recent inspections for this vehicle
       if (company && user) {
         const inspections = await api.getInspections(company.id, user.id, 7);
         const vehicleInspections = inspections.filter(i => i.vehicleId === id);
@@ -51,6 +57,22 @@ export default function VehicleDetail() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleStartInspection = () => {
+    setDialogState("trailer");
+  };
+
+  const handleTrailerAnswer = (answer: boolean) => {
+    setHasTrailer(answer);
+    setDialogState("checksheet");
+  };
+
+  const handleSelectChecksheet = (type: "safety" | "end_of_shift") => {
+    setDialogState("none");
+    // Navigate to inspection with trailer info
+    const trailerParam = hasTrailer ? "&trailer=true" : "";
+    setLocation(`/driver/inspection/${vehicle?.id}?type=${type}${trailerParam}`);
   };
 
   if (isLoading) {
@@ -137,7 +159,7 @@ export default function VehicleDetail() {
             icon={<FileText className="h-6 w-6 text-blue-600" />}
             title="Start Inspection"
             subtitle="Daily check or end of shift"
-            onClick={() => setLocation(`/driver/inspection/${vehicle.id}`)}
+            onClick={handleStartInspection}
             primary
             testId="action-start-inspection"
           />
@@ -150,14 +172,14 @@ export default function VehicleDetail() {
           />
           <ActionCard 
             icon={<AlertOctagon className="h-6 w-6 text-amber-600" />}
-            title="Report Collision"
-            subtitle="Log accident details"
-            onClick={() => setLocation(`/driver/collision/${vehicle.id}`)}
-            testId="action-collision"
+            title="Report Defect"
+            subtitle="Log defect with photos"
+            onClick={() => setLocation(`/driver/defect/${vehicle.id}`)}
+            testId="action-defect"
           />
         </div>
 
-        {/* Recent History for this Vehicle */}
+        {/* Recent History */}
         <div className="pt-4 space-y-3">
           <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2 ml-1">
             Recent Activity
@@ -185,6 +207,145 @@ export default function VehicleDetail() {
           )}
         </div>
       </div>
+
+      {/* Trailer Question Dialog */}
+      <AnimatePresence>
+        {dialogState === "trailer" && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setDialogState("none")}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+                <p className="text-lg font-medium text-slate-800 text-center mb-8">
+                  Does this asset have a trailer attached?
+                </p>
+                <div className="flex gap-3">
+                  <TitanButton 
+                    variant="outline" 
+                    className="flex-1 h-12"
+                    onClick={() => handleTrailerAnswer(true)}
+                    data-testid="button-trailer-yes"
+                  >
+                    Yes
+                  </TitanButton>
+                  <TitanButton 
+                    className="flex-1 h-12"
+                    onClick={() => handleTrailerAnswer(false)}
+                    data-testid="button-trailer-no"
+                  >
+                    No
+                  </TitanButton>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Checksheet Selection Dialog */}
+      <AnimatePresence>
+        {dialogState === "checksheet" && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40"
+              onClick={() => setDialogState("none")}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed inset-x-0 top-0 bottom-0 z-50 bg-white"
+            >
+              <div className="h-full flex flex-col">
+                {/* Header */}
+                <div className="flex items-center gap-3 p-4 border-b border-slate-100">
+                  <button onClick={() => setDialogState("none")} className="p-2 -ml-2">
+                    <ChevronLeft className="h-6 w-6 text-slate-600" />
+                  </button>
+                  <h2 className="text-lg font-bold text-slate-900">Select Checksheet</h2>
+                </div>
+
+                <div className="flex-1 p-4 space-y-3">
+                  {/* Only trailer inspections toggle */}
+                  <TitanCard 
+                    className="p-4 flex items-center justify-between cursor-pointer"
+                    onClick={() => setOnlyTrailerInspections(!onlyTrailerInspections)}
+                  >
+                    <span className="text-slate-700">Only show trailer inspections</span>
+                    <div className={`h-6 w-6 rounded border-2 flex items-center justify-center transition-colors ${
+                      onlyTrailerInspections ? 'bg-primary border-primary text-white' : 'border-slate-300'
+                    }`}>
+                      {onlyTrailerInspections && <Check className="h-4 w-4" />}
+                    </div>
+                  </TitanCard>
+
+                  {/* Checksheet options */}
+                  {!onlyTrailerInspections && (
+                    <>
+                      <TitanCard 
+                        className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        onClick={() => handleSelectChecksheet("end_of_shift")}
+                        data-testid="checksheet-end-of-shift"
+                      >
+                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <span className="flex-1 font-medium text-slate-800">End of shift inspection</span>
+                        <ChevronRight className="h-5 w-5 text-slate-400" />
+                      </TitanCard>
+
+                      <TitanCard 
+                        className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                        onClick={() => handleSelectChecksheet("safety")}
+                        data-testid="checksheet-safety"
+                      >
+                        <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <span className="flex-1 font-medium text-slate-800">Safety check</span>
+                        <ChevronRight className="h-5 w-5 text-slate-400" />
+                      </TitanCard>
+                    </>
+                  )}
+
+                  {/* Trailer-only options */}
+                  {onlyTrailerInspections && hasTrailer && (
+                    <TitanCard 
+                      className="p-4 flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                      onClick={() => handleSelectChecksheet("safety")}
+                    >
+                      <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span className="flex-1 font-medium text-slate-800">Trailer inspection</span>
+                      <ChevronRight className="h-5 w-5 text-slate-400" />
+                    </TitanCard>
+                  )}
+
+                  {onlyTrailerInspections && !hasTrailer && (
+                    <div className="text-center py-8 text-slate-500">
+                      <p>No trailer attached to this vehicle</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </DriverLayout>
   );
 }
