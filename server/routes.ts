@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema } from "@shared/schema";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
 
@@ -380,6 +380,93 @@ export async function registerRoutes(
     try {
       const userList = await storage.getUsersByCompany(Number(req.params.companyId));
       res.json(userList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== DOCUMENT API ROUTES ====================
+
+  // Get all documents for company (manager)
+  app.get("/api/manager/documents/:companyId", async (req, res) => {
+    try {
+      const docs = await storage.getDocumentsByCompany(Number(req.params.companyId));
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create document (manager)
+  app.post("/api/manager/documents", async (req, res) => {
+    try {
+      const validated = insertDocumentSchema.parse(req.body);
+      const doc = await storage.createDocument(validated);
+      res.status(201).json(doc);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update document (manager)
+  app.patch("/api/manager/documents/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateDocument(Number(req.params.id), req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete document (manager)
+  app.delete("/api/manager/documents/:id", async (req, res) => {
+    try {
+      await storage.deleteDocument(Number(req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get document acknowledgments (manager)
+  app.get("/api/manager/documents/:id/acknowledgments", async (req, res) => {
+    try {
+      const acks = await storage.getDocumentAcknowledgments(Number(req.params.id));
+      res.json(acks);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get unread documents for driver
+  app.get("/api/documents/unread", async (req, res) => {
+    try {
+      const { companyId, userId } = req.query;
+      if (!companyId || !userId) {
+        return res.status(400).json({ error: "Missing companyId or userId" });
+      }
+      const unreadDocs = await storage.getUnreadDocuments(Number(companyId), Number(userId));
+      res.json(unreadDocs);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Acknowledge document (driver)
+  app.post("/api/documents/:id/acknowledge", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+      const ack = await storage.acknowledgeDocument(Number(req.params.id), Number(userId));
+      res.status(201).json(ack);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

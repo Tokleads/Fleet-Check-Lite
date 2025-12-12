@@ -7,7 +7,9 @@ import {
   type Media, type InsertMedia,
   type Defect, type InsertDefect,
   type Trailer, type InsertTrailer,
-  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers
+  type Document, type InsertDocument,
+  type DocumentAcknowledgment, type InsertDocumentAcknowledgment,
+  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
@@ -72,6 +74,15 @@ export interface IStorage {
   
   // User management
   getUsersByCompany(companyId: number): Promise<User[]>;
+  
+  // Document operations
+  getDocumentsByCompany(companyId: number): Promise<Document[]>;
+  createDocument(document: InsertDocument): Promise<Document>;
+  updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
+  deleteDocument(id: number): Promise<void>;
+  getUnreadDocuments(companyId: number, userId: number): Promise<Document[]>;
+  acknowledgeDocument(documentId: number, userId: number): Promise<DocumentAcknowledgment>;
+  getDocumentAcknowledgments(documentId: number): Promise<(DocumentAcknowledgment & { user?: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -381,6 +392,70 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users)
       .where(eq(users.companyId, companyId))
       .orderBy(users.name);
+  }
+
+  // Document operations
+  async getDocumentsByCompany(companyId: number): Promise<Document[]> {
+    return await db.select().from(documents)
+      .where(eq(documents.companyId, companyId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async createDocument(document: InsertDocument): Promise<Document> {
+    const [newDoc] = await db.insert(documents).values(document).returning();
+    return newDoc;
+  }
+
+  async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
+    const [updated] = await db.update(documents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await db.update(documents).set({ active: false }).where(eq(documents.id, id));
+  }
+
+  async getUnreadDocuments(companyId: number, userId: number): Promise<Document[]> {
+    // Get all active documents that require acknowledgment and haven't been acknowledged by this user
+    const allDocs = await db.select().from(documents)
+      .where(and(
+        eq(documents.companyId, companyId),
+        eq(documents.active, true),
+        eq(documents.requiresAcknowledgment, true)
+      ));
+    
+    // Get user's acknowledgments
+    const userAcks = await db.select().from(documentAcknowledgments)
+      .where(eq(documentAcknowledgments.userId, userId));
+    
+    const acknowledgedDocIds = new Set(userAcks.map(a => a.documentId));
+    
+    // Filter to unread documents
+    return allDocs.filter(doc => !acknowledgedDocIds.has(doc.id));
+  }
+
+  async acknowledgeDocument(documentId: number, userId: number): Promise<DocumentAcknowledgment> {
+    const [ack] = await db.insert(documentAcknowledgments)
+      .values({ documentId, userId })
+      .returning();
+    return ack;
+  }
+
+  async getDocumentAcknowledgments(documentId: number): Promise<(DocumentAcknowledgment & { user?: User })[]> {
+    const acks = await db.select().from(documentAcknowledgments)
+      .where(eq(documentAcknowledgments.documentId, documentId))
+      .orderBy(desc(documentAcknowledgments.acknowledgedAt));
+    
+    // Enrich with user info
+    const enriched = await Promise.all(acks.map(async (ack) => {
+      const [user] = await db.select().from(users).where(eq(users.id, ack.userId));
+      return { ...ack, user };
+    }));
+    
+    return enriched;
   }
 }
 

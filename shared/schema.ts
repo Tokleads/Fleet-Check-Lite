@@ -187,6 +187,40 @@ export const insertDefectSchema = createInsertSchema(defects).omit({ id: true, c
 export type Defect = typeof defects.$inferSelect;
 export type InsertDefect = z.infer<typeof insertDefectSchema>;
 
+// Company Documents - for driver acknowledgment
+export const documents = pgTable("documents", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 50 }).notNull(), // TOOLBOX_TALK | HANDBOOK | POLICY | NOTICE
+  fileUrl: text("file_url"), // External file link or Drive ID
+  content: text("content"), // Rich text content if no file
+  priority: varchar("priority", { length: 20 }).default("NORMAL"), // LOW | NORMAL | HIGH | URGENT
+  requiresAcknowledgment: boolean("requires_acknowledgment").default(true),
+  expiresAt: timestamp("expires_at"), // Optional expiry date
+  active: boolean("active").default(true),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+
+// Document Acknowledgments - tracks who has read what
+export const documentAcknowledgments = pgTable("document_acknowledgments", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").references(() => documents.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  acknowledgedAt: timestamp("acknowledged_at").defaultNow().notNull()
+});
+
+export const insertDocumentAcknowledgmentSchema = createInsertSchema(documentAcknowledgments).omit({ id: true, acknowledgedAt: true });
+export type DocumentAcknowledgment = typeof documentAcknowledgments.$inferSelect;
+export type InsertDocumentAcknowledgment = z.infer<typeof insertDocumentAcknowledgmentSchema>;
+
 // Manager audit log
 export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
