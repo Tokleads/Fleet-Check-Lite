@@ -5,7 +5,8 @@ import { TitanInput } from "@/components/titan-ui/Input";
 import { LogoUploader } from "@/components/LogoUploader";
 import { useBrand } from "@/hooks/use-brand";
 import { session } from "@/lib/session";
-import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink, Shield, Smartphone } from "lucide-react";
+import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink, Shield, Smartphone, Users, Edit, Plus, Trash2, UserCog } from "lucide-react";
+import type { User } from "@shared/schema";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -154,6 +155,110 @@ export default function Settings() {
       }
     },
   });
+
+  // Team Management state
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [userForm, setUserForm] = useState({ name: '', email: '', role: 'DRIVER', pin: '' });
+  const [userError, setUserError] = useState<string | null>(null);
+
+  const { data: users = [], refetch: refetchUsers } = useQuery({
+    queryKey: ['users', company?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/manager/users/${company?.id}`);
+      return res.json();
+    },
+    enabled: !!company?.id
+  });
+
+  const createUser = useMutation({
+    mutationFn: async (userData: typeof userForm) => {
+      const res = await fetch('/api/manager/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: company?.id,
+          ...userData,
+          pin: userData.pin || null,
+          managerId: manager?.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+      return data;
+    },
+    onSuccess: () => {
+      refetchUsers();
+      setIsAddingUser(false);
+      setUserForm({ name: '', email: '', role: 'DRIVER', pin: '' });
+      setUserError(null);
+    },
+    onError: (error: Error) => {
+      setUserError(error.message);
+    },
+  });
+
+  const updateUser = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number } & Partial<typeof userForm>) => {
+      const res = await fetch(`/api/manager/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, pin: data.pin || null, managerId: manager?.id, companyId: company?.id }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to update user');
+      return result;
+    },
+    onSuccess: () => {
+      refetchUsers();
+      setEditingUser(null);
+      setUserForm({ name: '', email: '', role: 'DRIVER', pin: '' });
+      setUserError(null);
+    },
+    onError: (error: Error) => {
+      setUserError(error.message);
+    },
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/manager/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ managerId: manager?.id, companyId: company?.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to deactivate user');
+      return data;
+    },
+    onSuccess: () => {
+      refetchUsers();
+      setUserError(null);
+    },
+    onError: (error: Error) => {
+      setUserError(error.message);
+    },
+  });
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserForm({ name: user.name, email: user.email, role: user.role, pin: user.pin || '' });
+    setIsAddingUser(false);
+  };
+
+  const handleSaveUser = () => {
+    if (editingUser) {
+      updateUser.mutate({ id: editingUser.id, ...userForm });
+    } else {
+      createUser.mutate(userForm);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setIsAddingUser(false);
+    setUserForm({ name: '', email: '', role: 'DRIVER', pin: '' });
+  };
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPrimaryColor(e.target.value);
@@ -539,6 +644,158 @@ export default function Settings() {
                             </div>
                         </div>
                     )}
+                </TitanCardContent>
+            </TitanCard>
+
+            {/* Team Management Section */}
+            <TitanCard>
+                <TitanCardHeader>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
+                                <Users className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-foreground">Team Management</h2>
+                                <p className="text-sm text-muted-foreground">Manage drivers and managers in your organization.</p>
+                            </div>
+                        </div>
+                        <TitanButton
+                            onClick={() => { setIsAddingUser(true); setEditingUser(null); setUserForm({ name: '', email: '', role: 'DRIVER', pin: '' }); }}
+                            disabled={isAddingUser || !!editingUser}
+                            data-testid="button-add-user"
+                        >
+                            <Plus className="h-4 w-4 mr-2" /> Add User
+                        </TitanButton>
+                    </div>
+                </TitanCardHeader>
+                <TitanCardContent className="space-y-4">
+                    {/* Add/Edit User Form */}
+                    {(isAddingUser || editingUser) && (
+                        <div className="p-4 rounded-xl border border-border bg-secondary/30 space-y-4">
+                            <h4 className="font-semibold text-foreground">
+                                {editingUser ? `Edit ${editingUser.name}` : 'Add New User'}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <TitanInput
+                                    label="Full Name"
+                                    value={userForm.name}
+                                    onChange={(e) => setUserForm(f => ({ ...f, name: e.target.value }))}
+                                    placeholder="e.g. John Smith"
+                                    data-testid="input-user-name"
+                                />
+                                <TitanInput
+                                    label="Email Address"
+                                    type="email"
+                                    value={userForm.email}
+                                    onChange={(e) => setUserForm(f => ({ ...f, email: e.target.value }))}
+                                    placeholder="e.g. john@company.com"
+                                    data-testid="input-user-email"
+                                />
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground ml-1">Role</label>
+                                    <select
+                                        value={userForm.role}
+                                        onChange={(e) => setUserForm(f => ({ ...f, role: e.target.value }))}
+                                        className="w-full h-12 px-4 rounded-[14px] border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        data-testid="select-user-role"
+                                    >
+                                        <option value="DRIVER">Driver</option>
+                                        <option value="MANAGER">Manager</option>
+                                    </select>
+                                </div>
+                                <TitanInput
+                                    label="PIN Code"
+                                    value={userForm.pin}
+                                    onChange={(e) => setUserForm(f => ({ ...f, pin: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                                    placeholder="4-digit PIN"
+                                    maxLength={4}
+                                    data-testid="input-user-pin"
+                                />
+                            </div>
+                            {userError && (
+                                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" data-testid="error-user-form">
+                                    <div className="flex items-center gap-2">
+                                        <X className="h-4 w-4" />
+                                        <span>{userError}</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex gap-3">
+                                <TitanButton
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    data-testid="button-cancel-user"
+                                >
+                                    Cancel
+                                </TitanButton>
+                                <TitanButton
+                                    onClick={handleSaveUser}
+                                    disabled={!userForm.name || !userForm.email || createUser.isPending || updateUser.isPending}
+                                    data-testid="button-save-user"
+                                >
+                                    {(createUser.isPending || updateUser.isPending) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                    {editingUser ? 'Update User' : 'Create User'}
+                                </TitanButton>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Users List */}
+                    <div className="space-y-2">
+                        {(users as User[]).filter((u: User) => u.active).map((user: User) => (
+                            <div key={user.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-background hover:bg-secondary/30 transition-colors" data-testid={`user-row-${user.id}`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${user.role === 'MANAGER' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                                        {user.role === 'MANAGER' ? <UserCog className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-foreground">{user.name}</p>
+                                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${user.role === 'MANAGER' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                        {user.role}
+                                    </span>
+                                    {user.pin && (
+                                        <span className="px-2 py-1 text-xs font-mono bg-secondary text-muted-foreground rounded">
+                                            PIN: {user.pin}
+                                        </span>
+                                    )}
+                                    <TitanButton
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditUser(user)}
+                                        disabled={!!editingUser || isAddingUser}
+                                        data-testid={`button-edit-user-${user.id}`}
+                                    >
+                                        <Edit className="h-4 w-4" />
+                                    </TitanButton>
+                                    <TitanButton
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            if (confirm(`Are you sure you want to deactivate ${user.name}? They will no longer be able to log in.`)) {
+                                                deleteUser.mutate(user.id);
+                                            }
+                                        }}
+                                        disabled={user.id === manager?.id}
+                                        data-testid={`button-delete-user-${user.id}`}
+                                    >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                    </TitanButton>
+                                </div>
+                            </div>
+                        ))}
+
+                        {(users as User[]).filter((u: User) => u.active).length === 0 && (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <Users className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                                <p>No team members yet. Add your first user above.</p>
+                            </div>
+                        )}
+                    </div>
                 </TitanCardContent>
             </TitanCard>
         </div>

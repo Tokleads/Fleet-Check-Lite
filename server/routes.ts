@@ -636,6 +636,167 @@ export async function registerRoutes(
     }
   });
 
+  // Create user
+  app.post("/api/manager/users", async (req, res) => {
+    try {
+      const createUserSchema = z.object({
+        companyId: z.number(),
+        name: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(['DRIVER', 'MANAGER']),
+        pin: z.string().length(4).optional().nullable(),
+        managerId: z.number().optional(),
+      });
+      
+      const validated = createUserSchema.parse(req.body);
+      
+      // Verify manager belongs to this company
+      if (validated.managerId) {
+        const manager = await storage.getUser(validated.managerId);
+        if (!manager || manager.companyId !== validated.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to create users for this company" });
+        }
+      }
+      
+      const user = await storage.createUser({
+        companyId: validated.companyId,
+        name: validated.name,
+        email: validated.email,
+        role: validated.role,
+        pin: validated.pin || null,
+        active: true,
+      });
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: validated.companyId,
+        userId: validated.managerId || null,
+        action: 'CREATE',
+        entity: 'USER',
+        entityId: user.id,
+        details: { name: user.name, email: user.email, role: user.role },
+        req,
+      });
+      
+      res.status(201).json(user);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Failed to create user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update user
+  app.patch("/api/manager/users/:id", async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      
+      const updateUserSchema = z.object({
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        pin: z.string().length(4).optional().nullable(),
+        active: z.boolean().optional(),
+        managerId: z.number().optional(),
+        companyId: z.number().optional(),
+      });
+      
+      const validated = updateUserSchema.parse(req.body);
+      
+      // Get target user to verify company ownership
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Verify manager belongs to same company as target user
+      if (validated.managerId) {
+        const manager = await storage.getUser(validated.managerId);
+        if (!manager || manager.companyId !== targetUser.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to update users in this company" });
+        }
+      }
+      
+      // Build safe updates object (only allowed fields)
+      const updates: { name?: string; email?: string; pin?: string | null; active?: boolean } = {};
+      if (validated.name !== undefined) updates.name = validated.name;
+      if (validated.email !== undefined) updates.email = validated.email;
+      if (validated.pin !== undefined) updates.pin = validated.pin;
+      if (validated.active !== undefined) updates.active = validated.active;
+      
+      const updated = await storage.updateUser(userId, updates);
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: validated.managerId || null,
+        action: 'UPDATE',
+        entity: 'USER',
+        entityId: userId,
+        details: { name: updated.name, changes: updates },
+        req,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Failed to update user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Deactivate user (soft delete)
+  app.delete("/api/manager/users/:id", async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      const { managerId, companyId } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Verify manager belongs to same company and has permission
+      if (managerId) {
+        const manager = await storage.getUser(managerId);
+        if (!manager || manager.companyId !== user.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to deactivate users in this company" });
+        }
+        // Prevent self-deactivation
+        if (managerId === userId) {
+          return res.status(400).json({ error: "Cannot deactivate your own account" });
+        }
+      }
+      
+      await storage.updateUser(userId, { active: false });
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: managerId || null,
+        action: 'DELETE',
+        entity: 'USER',
+        entityId: userId,
+        details: { name: user.name, email: user.email },
+        req,
+      });
+      
+      res.status(200).json({ success: true, message: "User deactivated" });
+    } catch (error) {
+      console.error("Failed to deactivate user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ==================== AUDIT LOG API ROUTES ====================
 
   // Get audit logs for company

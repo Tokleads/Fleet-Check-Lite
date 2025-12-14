@@ -103,6 +103,16 @@ Access at `/manager/login` with:
 ## Recent Changes
 
 ### 2025-12-14 (Latest)
+- **Team Management**: Full user CRUD in Settings page
+  - Add new drivers and managers with name, email, role, PIN
+  - Edit existing user profiles
+  - Deactivate users (soft delete) with confirmation
+  - Multi-tenant security: company ownership verification on all operations
+  - Audit logging for all user changes
+  - API endpoints: POST/PATCH/DELETE /api/manager/users
+  - UI: Team Management section in Settings.tsx
+
+### 2025-12-14 (Earlier)
 - **Google Drive Integration**: Per-company PDF upload to Google Drive
   - Manager Settings page has Google Drive configuration UI
   - Each company configures their own OAuth refresh token and folder ID
