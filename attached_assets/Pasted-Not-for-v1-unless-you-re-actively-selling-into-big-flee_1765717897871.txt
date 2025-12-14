@@ -1,0 +1,57 @@
+Not for v1 — unless you’re actively selling into **big fleets with corporate IT** who will block you without it.
+
+Here’s the truth behind that FleetCheck line:
+
+## What they mean by “OAuth 2.0 SSO”
+
+* **OAuth 2.0** is an *authorisation* protocol (sign in with Google/Microsoft, etc.).
+* “**SSO**” in B2B usually means **SAML/Enterprise SSO** (Microsoft Entra ID/Azure AD, Okta, Google Workspace) where IT controls access centrally.
+* Vendors often say “OAuth SSO” because it sounds enterprise-grade, but it’s not always the same as **true enterprise SSO**.
+
+## Should Titan Fleet build it?
+
+### Build later (recommended)
+
+For most UK operators (small–mid), what they actually care about is:
+
+* roles/permissions (driver vs manager)
+* audit trail
+* 2FA
+* secure logins, PINs, device controls
+* clean access offboarding
+
+SSO only becomes a “must-have” when:
+
+* the customer has **IT/security policy**
+* they require **Entra ID/Okta**
+* they want enforced MFA + central user management
+* they ask about **SCIM** provisioning (auto-create/disable accounts)
+
+If you’re targeting owner-operators and SMEs with “pay once, own forever”, SSO is **nice-to-have** not deal-critical.
+
+## What you *should* build first (better ROI than SSO)
+
+1. **2FA / MFA** for manager/admin accounts (TOTP app)
+2. **Role-based access control** (Driver / Supervisor / TM / Admin)
+3. **Audit logs** (who changed what, when)
+4. **Session security** (short-lived tokens, refresh, device logout)
+5. **Password policy + lockout** / optional magic-link login
+
+These are the things that *feel* “enterprise” to buyers and protect you legally.
+
+## A smart compromise: “SSO-ready” without building enterprise SSO now
+
+* Add a roadmap line: **“Enterprise SSO available on Major Operator plan (by request)”**
+* Implement **Microsoft + Google login** (OAuth) for Admins as an optional login method later — easier than full SAML.
+* When you actually need enterprise SSO, do **SAML** (Entra ID/Okta) + optional **SCIM** for the largest customers.
+
+## How to position it on the site right now
+
+Instead of claiming it, say something like:
+
+* **“2FA, role-based access, audit logs”**
+* **“Enterprise SSO available for larger operators (Entra ID/Okta) — ask during onboarding.”**
+
+That reads premium without you burning weeks building something 95% of customers won’t use.
+
+If you tell me what stack you’re on (Next.js? Supabase? Firebase? Clerk/Auth0?), I’ll tell you the cleanest path for “SSO-ready now, enterprise SSO later” with minimal rebuild.
