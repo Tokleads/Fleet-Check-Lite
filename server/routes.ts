@@ -696,6 +696,137 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== 2FA/TOTP API ROUTES ====================
+
+  // Generate TOTP setup (QR code and secret)
+  app.post("/api/manager/2fa/setup/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (user.role !== 'MANAGER') {
+        return res.status(403).json({ error: "2FA is only available for managers" });
+      }
+      
+      const { generateTotpSetup } = await import("./totpService");
+      const setup = await generateTotpSetup(user.email);
+      
+      // Store the secret temporarily (user must verify before enabling)
+      await storage.updateUser(userId, { totpSecret: setup.secret, totpEnabled: false });
+      
+      res.json({
+        qrCodeDataUrl: setup.qrCodeDataUrl,
+        secret: setup.secret // For manual entry fallback
+      });
+    } catch (error) {
+      console.error("Error generating 2FA setup:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Verify and enable 2FA
+  app.post("/api/manager/2fa/enable/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Verification token required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user || !user.totpSecret) {
+        return res.status(400).json({ error: "2FA setup not initiated" });
+      }
+      
+      const { verifyTotpToken } = await import("./totpService");
+      const isValid = verifyTotpToken(token, user.totpSecret);
+      
+      if (!isValid) {
+        return res.status(400).json({ error: "Invalid verification code" });
+      }
+      
+      await storage.updateUser(userId, { totpEnabled: true });
+      
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: user.id,
+        action: 'UPDATE',
+        entity: 'SETTINGS',
+        details: { action: '2FA enabled' },
+        req
+      });
+      
+      res.json({ success: true, message: "Two-factor authentication enabled" });
+    } catch (error) {
+      console.error("Error enabling 2FA:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Disable 2FA
+  app.post("/api/manager/2fa/disable/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const { token } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Require valid TOTP token to disable
+      if (user.totpEnabled && user.totpSecret) {
+        const { verifyTotpToken } = await import("./totpService");
+        const isValid = verifyTotpToken(token, user.totpSecret);
+        if (!isValid) {
+          return res.status(400).json({ error: "Invalid verification code" });
+        }
+      }
+      
+      await storage.updateUser(userId, { totpSecret: null, totpEnabled: false });
+      
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: user.id,
+        action: 'UPDATE',
+        entity: 'SETTINGS',
+        details: { action: '2FA disabled' },
+        req
+      });
+      
+      res.json({ success: true, message: "Two-factor authentication disabled" });
+    } catch (error) {
+      console.error("Error disabling 2FA:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get 2FA status for user
+  app.get("/api/manager/2fa/status/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({
+        enabled: user.totpEnabled || false,
+        hasSecret: !!user.totpSecret
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ==================== LICENSE API ROUTES ====================
 
   // Get license info and vehicle usage

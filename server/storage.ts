@@ -77,6 +77,7 @@ export interface IStorage {
   
   // User management
   getUsersByCompany(companyId: number): Promise<User[]>;
+  updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
   
   // Document operations
   getDocumentsByCompany(companyId: number): Promise<Document[]>;
@@ -409,6 +410,14 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users)
       .where(eq(users.companyId, companyId))
       .orderBy(users.name);
+  }
+  
+  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+    const [updated] = await db.update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   // Document operations
