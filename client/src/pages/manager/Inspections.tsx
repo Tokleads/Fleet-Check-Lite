@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  ClipboardCheck
+  ClipboardCheck,
+  Loader2
 } from "lucide-react";
 
 export default function ManagerInspections() {
@@ -65,6 +66,62 @@ export default function ManagerInspections() {
     return user?.name || "Unknown";
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportToCSV = async () => {
+    if (!companyId) return;
+    
+    setIsExporting(true);
+    try {
+      // Fetch all inspections for export (no pagination)
+      const res = await fetch(`/api/manager/inspections/${companyId}?limit=10000&offset=0`);
+      if (!res.ok) throw new Error("Failed to fetch inspections");
+      const allInspections = await res.json();
+      
+      if (!allInspections || allInspections.length === 0) {
+        alert('No inspections to export');
+        return;
+      }
+
+      // CSV header
+      const headers = ['Date', 'Time', 'Vehicle VRM', 'Vehicle Name', 'Driver', 'Type', 'Mileage', 'Result'];
+      
+      // CSV rows
+      const rows = allInspections.map((inspection: any) => {
+        const date = new Date(inspection.createdAt);
+        return [
+          date.toLocaleDateString('en-GB'),
+          date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          getVehicleVrm(inspection.vehicleId),
+          getVehicleName(inspection.vehicleId),
+          getDriverName(inspection.driverId),
+          inspection.type.replace('_', ' ').toLowerCase(),
+          inspection.odometer || '',
+          inspection.status
+        ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+      });
+
+      // Combine header and rows
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `inspections-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert('Failed to export inspections');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <ManagerLayout>
       <div className="space-y-6">
@@ -78,9 +135,23 @@ export default function ManagerInspections() {
               <Filter className="h-4 w-4" />
               Filters
             </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-inspections-export">
-              <Download className="h-4 w-4" />
-              Export CSV
+            <button 
+              onClick={exportToCSV}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+              data-testid="button-inspections-export"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Export CSV
+                </>
+              )}
             </button>
           </div>
         </div>

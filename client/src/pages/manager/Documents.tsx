@@ -13,7 +13,10 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle2,
-  X
+  X,
+  Upload,
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -37,6 +40,8 @@ export default function ManagerDocuments() {
   const companyId = company?.id;
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState({
     title: "",
     description: "",
@@ -45,6 +50,46 @@ export default function ManagerDocuments() {
     content: "",
     fileUrl: "",
   });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      if (!newDoc.title) {
+        setNewDoc(prev => ({ ...prev, title: file.name.replace(/\.[^/.]+$/, "") }));
+      }
+    }
+  };
+
+  const uploadFile = async (): Promise<string | null> => {
+    if (!selectedFile || !companyId) return null;
+    
+    try {
+      setIsUploading(true);
+      const res = await fetch("/api/manager/documents/upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, filename: selectedFile.name }),
+      });
+      
+      if (!res.ok) throw new Error("Failed to get upload URL");
+      const { uploadUrl, storagePath } = await res.json();
+      
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: selectedFile,
+        headers: { "Content-Type": selectedFile.type || "application/octet-stream" },
+      });
+      
+      if (!uploadRes.ok) throw new Error("Failed to upload file");
+      return storagePath;
+    } catch (error) {
+      console.error("Upload error:", error);
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["manager-documents", companyId],
@@ -68,11 +113,20 @@ export default function ManagerDocuments() {
 
   const createMutation = useMutation({
     mutationFn: async (doc: any) => {
+      let fileUrl = doc.fileUrl;
+      if (selectedFile) {
+        const uploadedPath = await uploadFile();
+        if (uploadedPath) {
+          fileUrl = uploadedPath;
+        }
+      }
+      
       const res = await fetch("/api/manager/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...doc,
+          fileUrl,
           companyId,
           createdBy: manager?.id,
           requiresAcknowledgment: true,
@@ -84,6 +138,7 @@ export default function ManagerDocuments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["manager-documents"] });
       setShowCreateModal(false);
+      setSelectedFile(null);
       setNewDoc({ title: "", description: "", category: "TOOLBOX_TALK", priority: "NORMAL", content: "", fileUrl: "" });
     },
   });
@@ -253,6 +308,56 @@ export default function ManagerDocuments() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload File</label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="file-upload"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                    data-testid="input-doc-file"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="flex items-center justify-center gap-2 w-full h-24 border-2 border-dashed border-slate-200 rounded-lg cursor-pointer hover:border-primary/50 hover:bg-slate-50 transition-colors"
+                  >
+                    {selectedFile ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <FileText className="h-5 w-5 text-primary" />
+                        <span className="font-medium text-slate-700">{selectedFile.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedFile(null);
+                          }}
+                          className="ml-2 p-1 hover:bg-slate-200 rounded"
+                        >
+                          <X className="h-4 w-4 text-slate-500" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-6 w-6 text-slate-400 mx-auto mb-1" />
+                        <span className="text-sm text-slate-500">Click to upload file</span>
+                        <p className="text-xs text-slate-400 mt-0.5">PDF, Word, Excel, Images</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-white text-slate-400">or link to external file</span>
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">External Link (optional)</label>
                 <input
                   type="url"
@@ -261,19 +366,25 @@ export default function ManagerDocuments() {
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   placeholder="https://drive.google.com/..."
                   data-testid="input-doc-url"
+                  disabled={!!selectedFile}
                 />
               </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-              <TitanButton variant="outline" onClick={() => setShowCreateModal(false)}>
+              <TitanButton variant="outline" onClick={() => { setShowCreateModal(false); setSelectedFile(null); }}>
                 Cancel
               </TitanButton>
               <TitanButton 
                 onClick={() => createMutation.mutate(newDoc)}
-                disabled={!newDoc.title || createMutation.isPending}
+                disabled={!newDoc.title || createMutation.isPending || isUploading}
               >
-                {createMutation.isPending ? "Creating..." : "Create Document"}
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : createMutation.isPending ? "Creating..." : "Create Document"}
               </TitanButton>
             </div>
           </TitanCard>

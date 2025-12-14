@@ -117,6 +117,24 @@ export class ObjectStorageService {
     });
   }
 
+  async getDocumentUploadURL(companyId: number, filename: string): Promise<{ uploadUrl: string; storagePath: string }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    if (!privateObjectDir) {
+      throw new Error("PRIVATE_OBJECT_DIR not set");
+    }
+    const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectId = `documents/company-${companyId}/${randomUUID()}-${sanitizedFilename}`;
+    const fullPath = `${privateObjectDir}/${objectId}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const uploadUrl = await signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec: 900,
+    });
+    return { uploadUrl, storagePath: `/objects/${objectId}` };
+  }
+
   normalizeLogoPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;

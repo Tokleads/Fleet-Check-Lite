@@ -1076,6 +1076,25 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== DOCUMENT UPLOAD ====================
+
+  // Get presigned URL for document upload
+  app.post("/api/manager/documents/upload-url", async (req, res) => {
+    try {
+      const { companyId, filename } = req.body;
+      if (!companyId || !filename) {
+        return res.status(400).json({ error: "Missing companyId or filename" });
+      }
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const result = await objectStorage.getDocumentUploadURL(Number(companyId), filename);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting document upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
   // Serve uploaded objects (logos, etc.)
   app.get("/objects/*", async (req, res) => {
     try {
