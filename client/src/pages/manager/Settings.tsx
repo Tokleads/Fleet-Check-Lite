@@ -5,9 +5,9 @@ import { TitanInput } from "@/components/titan-ui/Input";
 import { LogoUploader } from "@/components/LogoUploader";
 import { useBrand } from "@/hooks/use-brand";
 import { session } from "@/lib/session";
-import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink } from "lucide-react";
+import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink, Shield, Smartphone } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function Settings() {
   const { tenant } = useBrand();
@@ -36,6 +36,22 @@ export default function Settings() {
   const [refreshToken, setRefreshToken] = useState("");
   const [folderId, setFolderId] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; email?: string; error?: string } | null>(null);
+  
+  // 2FA state
+  const manager = session.getUser();
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [totpSecret, setTotpSecret] = useState("");
+  
+  const { data: twoFAStatus, refetch: refetchTwoFAStatus } = useQuery({
+    queryKey: ['2fa-status', manager?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/manager/2fa/status/${manager?.id}`);
+      return res.json();
+    },
+    enabled: !!manager?.id
+  });
 
   const testConnection = useMutation({
     mutationFn: async () => {
@@ -86,6 +102,56 @@ export default function Settings() {
       session.setCompany(data);
       setGoogleDriveConnected(false);
       queryClient.invalidateQueries({ queryKey: ["company"] });
+    },
+  });
+  
+  // 2FA mutations
+  const setup2FA = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/2fa/setup/${manager?.id}`, { method: "POST" });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setQrCodeUrl(data.qrCodeDataUrl);
+      setTotpSecret(data.secret);
+      setShow2FASetup(true);
+    },
+  });
+  
+  const enable2FA = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/2fa/enable/${manager?.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: totpCode }),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        refetchTwoFAStatus();
+        setShow2FASetup(false);
+        setTotpCode("");
+        setQrCodeUrl("");
+        setTotpSecret("");
+      }
+    },
+  });
+  
+  const disable2FA = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/2fa/disable/${manager?.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: totpCode }),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        refetchTwoFAStatus();
+        setTotpCode("");
+      }
     },
   });
 
@@ -329,6 +395,148 @@ export default function Settings() {
                         <div className="mt-6 p-4 rounded-xl border border-border bg-background">
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Status</p>
                             <p className="text-sm text-foreground">Inspection PDFs will automatically upload to your configured Google Drive folder.</p>
+                        </div>
+                    )}
+                </TitanCardContent>
+            </TitanCard>
+
+            {/* Security / 2FA Section */}
+            <TitanCard>
+                <TitanCardHeader>
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+                            <Shield className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-foreground">Security</h2>
+                            <p className="text-sm text-muted-foreground">Protect your account with two-factor authentication.</p>
+                        </div>
+                    </div>
+                </TitanCardHeader>
+                <TitanCardContent className="space-y-6">
+                    <div className="p-4 rounded-xl border border-border bg-background">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                                    <Smartphone className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground">Two-Factor Authentication</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        {twoFAStatus?.enabled 
+                                            ? "Your account is protected with 2FA"
+                                            : "Add an extra layer of security to your account"}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {twoFAStatus?.enabled ? (
+                                    <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
+                                        <Check className="h-4 w-4" />
+                                        Enabled
+                                    </span>
+                                ) : (
+                                    <span className="text-sm text-muted-foreground">Disabled</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {!twoFAStatus?.enabled && !show2FASetup && (
+                        <TitanButton
+                            onClick={() => setup2FA.mutate()}
+                            disabled={setup2FA.isPending}
+                            data-testid="button-setup-2fa"
+                        >
+                            {setup2FA.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                            Enable Two-Factor Authentication
+                        </TitanButton>
+                    )}
+
+                    {show2FASetup && (
+                        <div className="space-y-6 p-6 rounded-xl border border-border bg-secondary/30">
+                            <div className="text-center space-y-4">
+                                <h3 className="font-semibold text-foreground">Set Up Authenticator App</h3>
+                                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                                    Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                                </p>
+                                
+                                {qrCodeUrl && (
+                                    <div className="flex justify-center">
+                                        <img src={qrCodeUrl} alt="2FA QR Code" className="w-48 h-48 rounded-lg border border-border" data-testid="img-2fa-qr" />
+                                    </div>
+                                )}
+                                
+                                <div className="text-xs text-muted-foreground">
+                                    <p>Can't scan? Enter this code manually:</p>
+                                    <code className="block mt-1 p-2 bg-background rounded text-sm font-mono tracking-widest">
+                                        {totpSecret}
+                                    </code>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium text-foreground">Enter the 6-digit code from your app</label>
+                                <TitanInput
+                                    type="text"
+                                    placeholder="000000"
+                                    value={totpCode}
+                                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    maxLength={6}
+                                    className="text-center text-2xl tracking-[0.5em] font-mono"
+                                    data-testid="input-totp-code"
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <TitanButton
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShow2FASetup(false);
+                                        setQrCodeUrl("");
+                                        setTotpSecret("");
+                                        setTotpCode("");
+                                    }}
+                                >
+                                    Cancel
+                                </TitanButton>
+                                <TitanButton
+                                    onClick={() => enable2FA.mutate()}
+                                    disabled={totpCode.length !== 6 || enable2FA.isPending}
+                                    data-testid="button-verify-2fa"
+                                >
+                                    {enable2FA.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                    Verify & Enable
+                                </TitanButton>
+                            </div>
+                        </div>
+                    )}
+
+                    {twoFAStatus?.enabled && (
+                        <div className="space-y-4 p-4 rounded-xl border border-border bg-secondary/30">
+                            <p className="text-sm text-muted-foreground">
+                                To disable two-factor authentication, enter a code from your authenticator app.
+                            </p>
+                            <div className="flex gap-3">
+                                <TitanInput
+                                    type="text"
+                                    placeholder="Enter 6-digit code"
+                                    value={totpCode}
+                                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    maxLength={6}
+                                    className="max-w-[200px] text-center font-mono"
+                                    data-testid="input-disable-totp"
+                                />
+                                <TitanButton
+                                    variant="outline"
+                                    onClick={() => disable2FA.mutate()}
+                                    disabled={totpCode.length !== 6 || disable2FA.isPending}
+                                    data-testid="button-disable-2fa"
+                                >
+                                    {disable2FA.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                    Disable 2FA
+                                </TitanButton>
+                            </div>
                         </div>
                     )}
                 </TitanCardContent>

@@ -350,7 +350,7 @@ export async function registerRoutes(
   // Manager login
   app.post("/api/manager/login", async (req, res) => {
     try {
-      const { companyCode, pin } = req.body;
+      const { companyCode, pin, totpToken } = req.body;
       if (!companyCode || !pin) {
         return res.status(400).json({ error: "Missing company code or PIN" });
       }
@@ -365,6 +365,25 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid PIN" });
       }
 
+      // Check if 2FA is enabled for this manager
+      if (manager.totpEnabled && manager.totpSecret) {
+        // If no TOTP token provided, indicate that 2FA is required
+        if (!totpToken) {
+          return res.json({ 
+            requiresTwoFactor: true, 
+            managerId: manager.id,
+            managerName: manager.name
+          });
+        }
+        
+        // Verify TOTP token
+        const { verifyTotpToken } = await import("./totpService");
+        const isValid = verifyTotpToken(totpToken, manager.totpSecret);
+        if (!isValid) {
+          return res.status(401).json({ error: "Invalid verification code" });
+        }
+      }
+
       // Audit log: Manager login
       const { logAudit } = await import("./auditService");
       await logAudit({
@@ -372,7 +391,7 @@ export async function registerRoutes(
         userId: manager.id,
         action: 'LOGIN',
         entity: 'SESSION',
-        details: { managerName: manager.name },
+        details: { managerName: manager.name, with2FA: !!manager.totpEnabled },
         req,
       });
 
