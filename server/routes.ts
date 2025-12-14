@@ -137,11 +137,15 @@ export async function registerRoutes(
               
               const pdfStream = generateInspectionPDF(pdfData);
               
-              // Decrypt the stored refresh token
+              // Decrypt all stored credentials
               const { decrypt } = await import("./encryption");
-              const decryptedToken = decrypt(company.driveRefreshToken);
+              const decryptedClientId = decrypt(company.driveClientId!);
+              const decryptedClientSecret = decrypt(company.driveClientSecret!);
+              const decryptedToken = decrypt(company.driveRefreshToken!);
               
               const result = await googleDriveService.uploadPDF(pdfStream, filename, {
+                clientId: decryptedClientId,
+                clientSecret: decryptedClientSecret,
                 refreshToken: decryptedToken,
                 folderId: company.driveRootFolderId || undefined,
               });
@@ -672,29 +676,32 @@ export async function registerRoutes(
   // Update Google Drive settings for company
   app.patch("/api/manager/company/:companyId/gdrive", async (req, res) => {
     try {
-      const { refreshToken, folderId, disconnect } = req.body;
+      const { clientId, clientSecret, refreshToken, folderId, disconnect } = req.body;
       const companyId = Number(req.params.companyId);
       
       if (disconnect) {
         const updated = await storage.updateCompany(companyId, {
           googleDriveConnected: false,
+          driveClientId: null,
+          driveClientSecret: null,
           driveRefreshToken: null,
           driveRootFolderId: null,
         });
         return res.json(updated);
       }
       
-      if (!refreshToken) {
-        return res.status(400).json({ error: "Missing refresh token" });
+      if (!clientId || !clientSecret || !refreshToken) {
+        return res.status(400).json({ error: "Missing Google credentials" });
       }
       
-      // Encrypt refresh token before storing
+      // Encrypt all credentials before storing
       const { encrypt } = await import("./encryption");
-      const encryptedToken = encrypt(refreshToken);
       
       const updated = await storage.updateCompany(companyId, {
         googleDriveConnected: true,
-        driveRefreshToken: encryptedToken,
+        driveClientId: encrypt(clientId),
+        driveClientSecret: encrypt(clientSecret),
+        driveRefreshToken: encrypt(refreshToken),
         driveRootFolderId: folderId || null,
       });
       
@@ -711,14 +718,14 @@ export async function registerRoutes(
   // Test Google Drive connection
   app.post("/api/manager/company/:companyId/gdrive/test", async (req, res) => {
     try {
-      const { refreshToken } = req.body;
+      const { clientId, clientSecret, refreshToken } = req.body;
       
-      if (!refreshToken) {
-        return res.status(400).json({ error: "Missing refresh token" });
+      if (!clientId || !clientSecret || !refreshToken) {
+        return res.status(400).json({ error: "Missing Google credentials" });
       }
       
       const { googleDriveService } = await import("./googleDriveService");
-      const result = await googleDriveService.testConnection(refreshToken);
+      const result = await googleDriveService.testConnection(clientId, clientSecret, refreshToken);
       
       res.json(result);
     } catch (error) {

@@ -14,6 +14,8 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [primaryColor, setPrimaryColor] = useState(currentCompany.settings.brand?.primaryColor || "#2563eb");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const [refreshToken, setRefreshToken] = useState("");
   const [folderId, setFolderId] = useState("");
   const [testResult, setTestResult] = useState<{ success: boolean; email?: string; error?: string } | null>(null);
@@ -23,7 +25,7 @@ export default function Settings() {
       const res = await fetch(`/api/manager/company/${company?.id}/gdrive/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ clientId, clientSecret, refreshToken }),
       });
       return res.json();
     },
@@ -37,7 +39,7 @@ export default function Settings() {
       const res = await fetch(`/api/manager/company/${company?.id}/gdrive`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken, folderId }),
+        body: JSON.stringify({ clientId, clientSecret, refreshToken, folderId }),
       });
       return res.json();
     },
@@ -203,6 +205,28 @@ export default function Settings() {
 
                             <div className="space-y-4">
                                 <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">Google Client ID</label>
+                                    <TitanInput
+                                        type="text"
+                                        placeholder="Your Google OAuth Client ID"
+                                        value={clientId}
+                                        onChange={(e) => setClientId(e.target.value)}
+                                        data-testid="input-gdrive-client-id"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">Google Client Secret</label>
+                                    <TitanInput
+                                        type="password"
+                                        placeholder="Your Google OAuth Client Secret"
+                                        value={clientSecret}
+                                        onChange={(e) => setClientSecret(e.target.value)}
+                                        data-testid="input-gdrive-client-secret"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
                                     <label className="text-sm font-medium text-muted-foreground">Refresh Token</label>
                                     <TitanInput
                                         type="password"
@@ -244,7 +268,7 @@ export default function Settings() {
                                     <TitanButton
                                         variant="outline"
                                         onClick={() => testConnection.mutate()}
-                                        disabled={!refreshToken || testConnection.isPending}
+                                        disabled={!clientId || !clientSecret || !refreshToken || testConnection.isPending}
                                         data-testid="button-test-gdrive"
                                     >
                                         {testConnection.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -252,7 +276,7 @@ export default function Settings() {
                                     </TitanButton>
                                     <TitanButton
                                         onClick={() => saveConnection.mutate()}
-                                        disabled={!refreshToken || !testResult?.success || saveConnection.isPending}
+                                        disabled={!clientId || !clientSecret || !refreshToken || !testResult?.success || saveConnection.isPending}
                                         data-testid="button-save-gdrive"
                                     >
                                         {saveConnection.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

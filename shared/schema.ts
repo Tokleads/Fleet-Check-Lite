@@ -33,10 +33,12 @@ export const companies = pgTable("companies", {
     driverHistoryDays: 7
   }),
   
-  // Google Drive integration
+  // Google Drive integration (per-company credentials for white-label)
   googleDriveConnected: boolean("google_drive_connected").default(false),
   driveRootFolderId: text("drive_root_folder_id"),
-  driveRefreshToken: text("drive_refresh_token"), // Should be encrypted in production
+  driveClientId: text("drive_client_id"), // Encrypted
+  driveClientSecret: text("drive_client_secret"), // Encrypted
+  driveRefreshToken: text("drive_refresh_token"), // Encrypted
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
