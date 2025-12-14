@@ -57,6 +57,11 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 20 }).notNull(), // DRIVER | MANAGER
   pin: varchar("pin", { length: 4 }), // Optional driver PIN
   active: boolean("active").default(true),
+  
+  // Two-Factor Authentication (TOTP) for managers
+  totpSecret: text("totp_secret"), // Encrypted TOTP secret key
+  totpEnabled: boolean("totp_enabled").default(false),
+  
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
