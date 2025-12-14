@@ -91,6 +91,9 @@ export interface IStorage {
   getCompanyById(companyId: number): Promise<Company | undefined>;
   createLicenseUpgradeRequest(request: InsertLicenseUpgradeRequest): Promise<LicenseUpgradeRequest>;
   getActiveVehicleCount(companyId: number): Promise<number>;
+  
+  // Company settings
+  updateCompany(id: number, updates: Partial<Company>): Promise<Company | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -527,6 +530,14 @@ export class DatabaseStorage implements IStorage {
   async createLicenseUpgradeRequest(request: InsertLicenseUpgradeRequest): Promise<LicenseUpgradeRequest> {
     const [newRequest] = await db.insert(licenseUpgradeRequests).values(request).returning();
     return newRequest;
+  }
+
+  async updateCompany(id: number, updates: Partial<Company>): Promise<Company | undefined> {
+    const [updated] = await db.update(companies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(companies.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

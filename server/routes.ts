@@ -230,8 +230,8 @@ export async function registerRoutes(
         checklist: inspection.checklist as any[],
         defects: inspection.defects as any[] | null,
         hasTrailer: inspection.hasTrailer || false,
-        startedAt: inspection.startedAt,
-        completedAt: inspection.completedAt,
+        startedAt: inspection.startedAt?.toISOString() || null,
+        completedAt: inspection.completedAt?.toISOString() || null,
         durationSeconds: inspection.durationSeconds,
         createdAt: inspection.createdAt.toISOString(),
       };
@@ -602,6 +602,61 @@ export async function registerRoutes(
       }
       const ack = await storage.acknowledgeDocument(Number(req.params.id), Number(userId));
       res.status(201).json(ack);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== GOOGLE DRIVE SETTINGS ====================
+  
+  // Update Google Drive settings for company
+  app.patch("/api/manager/company/:companyId/gdrive", async (req, res) => {
+    try {
+      const { refreshToken, folderId, disconnect } = req.body;
+      const companyId = Number(req.params.companyId);
+      
+      if (disconnect) {
+        const updated = await storage.updateCompany(companyId, {
+          googleDriveConnected: false,
+          driveRefreshToken: null,
+          driveRootFolderId: null,
+        });
+        return res.json(updated);
+      }
+      
+      if (!refreshToken) {
+        return res.status(400).json({ error: "Missing refresh token" });
+      }
+      
+      const updated = await storage.updateCompany(companyId, {
+        googleDriveConnected: true,
+        driveRefreshToken: refreshToken,
+        driveRootFolderId: folderId || null,
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Test Google Drive connection
+  app.post("/api/manager/company/:companyId/gdrive/test", async (req, res) => {
+    try {
+      const { refreshToken } = req.body;
+      
+      if (!refreshToken) {
+        return res.status(400).json({ error: "Missing refresh token" });
+      }
+      
+      const { googleDriveService } = await import("./googleDriveService");
+      const result = await googleDriveService.testConnection(refreshToken);
+      
+      res.json(result);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

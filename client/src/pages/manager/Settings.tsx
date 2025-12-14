@@ -3,13 +3,66 @@ import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard, TitanCardContent, TitanCardHeader } from "@/components/titan-ui/Card";
 import { TitanInput } from "@/components/titan-ui/Input";
 import { useBrand } from "@/hooks/use-brand";
-import { Palette, HardDrive, RefreshCw, Check, UploadCloud } from "lucide-react";
+import { session } from "@/lib/session";
+import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function Settings() {
   const { currentCompany } = useBrand();
+  const company = session.getCompany();
+  const queryClient = useQueryClient();
   const [primaryColor, setPrimaryColor] = useState(currentCompany.settings.brand?.primaryColor || "#2563eb");
   const [isConnecting, setIsConnecting] = useState(false);
+  const [refreshToken, setRefreshToken] = useState("");
+  const [folderId, setFolderId] = useState("");
+  const [testResult, setTestResult] = useState<{ success: boolean; email?: string; error?: string } | null>(null);
+
+  const testConnection = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/company/${company?.id}/gdrive/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setTestResult(data);
+    },
+  });
+
+  const saveConnection = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/company/${company?.id}/gdrive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken, folderId }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsConnecting(false);
+      setRefreshToken("");
+      queryClient.invalidateQueries({ queryKey: ["company"] });
+      window.location.reload();
+    },
+  });
+
+  const disconnect = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/manager/company/${company?.id}/gdrive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ disconnect: true }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["company"] });
+      window.location.reload();
+    },
+  });
 
   const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPrimaryColor(e.target.value);
@@ -92,7 +145,7 @@ export default function Settings() {
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-foreground">Storage Integration</h2>
-                            <p className="text-sm text-muted-foreground">Connect your corporate Google Drive.</p>
+                            <p className="text-sm text-muted-foreground">Connect your corporate Google Drive for automatic PDF uploads.</p>
                         </div>
                     </div>
                 </TitanCardHeader>
@@ -115,33 +168,105 @@ export default function Settings() {
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2 text-sm text-green-700 font-medium bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
                                         <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                                        Sync Active
+                                        Connected
                                     </div>
-                                    <TitanButton variant="outline" size="sm" className="w-full">Reconnect</TitanButton>
+                                    <TitanButton 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full"
+                                        onClick={() => disconnect.mutate()}
+                                        disabled={disconnect.isPending}
+                                    >
+                                        {disconnect.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Disconnect"}
+                                    </TitanButton>
                                 </div>
                             ) : (
-                                <TitanButton onClick={() => setIsConnecting(!isConnecting)}>
-                                    Connect Account
+                                <TitanButton onClick={() => setIsConnecting(!isConnecting)} data-testid="button-connect-gdrive">
+                                    {isConnecting ? "Cancel" : "Connect Account"}
                                 </TitanButton>
                             )}
                         </div>
                     </div>
 
-                    {currentCompany.googleDriveConnected && (
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="p-4 rounded-xl border border-border bg-background">
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Target Path</p>
-                                <p className="font-mono text-sm text-foreground">/FleetCheck/Uploads/{'{Year}'}</p>
+                    {isConnecting && !currentCompany.googleDriveConnected && (
+                        <div className="mt-6 space-y-6 p-6 bg-background rounded-xl border border-border">
+                            <div className="space-y-2">
+                                <h4 className="font-semibold text-foreground">Setup Instructions</h4>
+                                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                                    <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink className="h-3 w-3" /></a></li>
+                                    <li>Create a project and enable the Google Drive API</li>
+                                    <li>Create OAuth 2.0 credentials (Web application type)</li>
+                                    <li>Use the OAuth Playground to get a refresh token</li>
+                                    <li>Paste the refresh token below</li>
+                                </ol>
                             </div>
-                            <div className="p-4 rounded-xl border border-border bg-background flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Last Sync</p>
-                                    <p className="text-sm text-foreground">Just now</p>
+
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">Refresh Token</label>
+                                    <TitanInput
+                                        type="password"
+                                        placeholder="Paste your Google OAuth refresh token"
+                                        value={refreshToken}
+                                        onChange={(e) => setRefreshToken(e.target.value)}
+                                        data-testid="input-gdrive-token"
+                                    />
                                 </div>
-                                <TitanButton variant="ghost" size="icon" className="h-8 w-8">
-                                    <RefreshCw className="h-4 w-4 text-muted-foreground" />
-                                </TitanButton>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-muted-foreground">Folder ID (optional)</label>
+                                    <TitanInput
+                                        placeholder="Google Drive folder ID for uploads"
+                                        value={folderId}
+                                        onChange={(e) => setFolderId(e.target.value)}
+                                        data-testid="input-gdrive-folder"
+                                    />
+                                    <p className="text-xs text-muted-foreground">Leave empty to upload to root. Find the ID in your Drive folder URL.</p>
+                                </div>
+
+                                {testResult && (
+                                    <div className={`p-4 rounded-lg border ${testResult.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                        {testResult.success ? (
+                                            <div className="flex items-center gap-2">
+                                                <Check className="h-4 w-4" />
+                                                <span>Connected as {testResult.email}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <X className="h-4 w-4" />
+                                                <span>{testResult.error}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3">
+                                    <TitanButton
+                                        variant="outline"
+                                        onClick={() => testConnection.mutate()}
+                                        disabled={!refreshToken || testConnection.isPending}
+                                        data-testid="button-test-gdrive"
+                                    >
+                                        {testConnection.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Test Connection
+                                    </TitanButton>
+                                    <TitanButton
+                                        onClick={() => saveConnection.mutate()}
+                                        disabled={!refreshToken || !testResult?.success || saveConnection.isPending}
+                                        data-testid="button-save-gdrive"
+                                    >
+                                        {saveConnection.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                        Save Connection
+                                    </TitanButton>
+                                </div>
                             </div>
+                        </div>
+                    )}
+
+                    {currentCompany.googleDriveConnected && (
+                        <div className="mt-6 p-4 rounded-xl border border-border bg-background">
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Status</p>
+                            <p className="text-sm text-foreground">Inspection PDFs will automatically upload to your configured Google Drive folder.</p>
                         </div>
                     )}
                 </TitanCardContent>
