@@ -39,6 +39,9 @@ export default function ManagerFleet() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [deletingVehicle, setDeletingVehicle] = useState<any | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addFormData, setAddFormData] = useState({ vrm: '', make: '', model: '', fleetNumber: '', vehicleCategory: 'HGV' });
+  const [addError, setAddError] = useState<string | null>(null);
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
 
@@ -62,6 +65,38 @@ export default function ManagerFleet() {
       document.removeEventListener('pointerdown', handleClickOutside, true);
     };
   }, [openMenuId]);
+
+  // Create vehicle mutation
+  const createVehicleMutation = useMutation({
+    mutationFn: async (data: typeof addFormData) => {
+      const res = await fetch('/api/manager/vehicles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId,
+          vrm: data.vrm.toUpperCase().replace(/\s/g, ''),
+          make: data.make,
+          model: data.model,
+          fleetNumber: data.fleetNumber || null,
+          vehicleCategory: data.vehicleCategory,
+          active: true,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to create vehicle');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vehicles', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['license', companyId] });
+      setShowAddForm(false);
+      setAddFormData({ vrm: '', make: '', model: '', fleetNumber: '', vehicleCategory: 'HGV' });
+      setAddError(null);
+    },
+    onError: (error: Error) => {
+      setAddError(error.message);
+    },
+  });
 
   // Toggle vehicle active status
   const toggleActiveMutation = useMutation({
@@ -140,6 +175,7 @@ export default function ManagerFleet() {
             <p className="text-slate-500 mt-0.5">Manage vehicles and trailers</p>
           </div>
           <button 
+            onClick={() => { setShowAddForm(true); setAddError(null); }}
             className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm ${
               license?.state === 'over_hard_limit' 
                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
@@ -198,6 +234,94 @@ export default function ManagerFleet() {
               View license
               <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
+          </div>
+        )}
+
+        {/* Add Vehicle Form */}
+        {showAddForm && (
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4" data-testid="panel-add-vehicle">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">Add New Vehicle</h3>
+              <button onClick={() => setShowAddForm(false)} className="text-slate-400 hover:text-slate-600">×</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Registration (VRM) *</label>
+                <input
+                  type="text"
+                  value={addFormData.vrm}
+                  onChange={(e) => setAddFormData(d => ({ ...d, vrm: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. AB12 CDE"
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="input-add-vrm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Make *</label>
+                <input
+                  type="text"
+                  value={addFormData.make}
+                  onChange={(e) => setAddFormData(d => ({ ...d, make: e.target.value }))}
+                  placeholder="e.g. DAF"
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="input-add-make"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Model *</label>
+                <input
+                  type="text"
+                  value={addFormData.model}
+                  onChange={(e) => setAddFormData(d => ({ ...d, model: e.target.value }))}
+                  placeholder="e.g. XF 530"
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="input-add-model"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Fleet Number</label>
+                <input
+                  type="text"
+                  value={addFormData.fleetNumber}
+                  onChange={(e) => setAddFormData(d => ({ ...d, fleetNumber: e.target.value }))}
+                  placeholder="e.g. F016"
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="input-add-fleet-number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Category</label>
+                <select
+                  value={addFormData.vehicleCategory}
+                  onChange={(e) => setAddFormData(d => ({ ...d, vehicleCategory: e.target.value }))}
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="select-add-category"
+                >
+                  <option value="HGV">HGV (10 min check)</option>
+                  <option value="LGV">LGV (5 min check)</option>
+                </select>
+              </div>
+            </div>
+            {addError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{addError}</div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAddForm(false)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50"
+                data-testid="button-cancel-add"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createVehicleMutation.mutate(addFormData)}
+                disabled={!addFormData.vrm || !addFormData.make || !addFormData.model || createVehicleMutation.isPending}
+                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                data-testid="button-submit-add"
+              >
+                {createVehicleMutation.isPending ? 'Adding...' : 'Add Vehicle'}
+              </button>
+            </div>
           </div>
         )}
 
