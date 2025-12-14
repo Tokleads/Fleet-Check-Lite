@@ -102,7 +102,20 @@ Access at `/manager/login` with:
 
 ## Recent Changes
 
-### 2025-12-12 (Latest)
+### 2025-12-14 (Latest)
+- **DVSA Auditable Timer**: Added timed inspection workflow for DVSA compliance
+  - Records start and end timestamps for every inspection
+  - Shows live timer during checks with MM:SS display
+  - Minimum time enforcement: 10 minutes for HGV, 5 minutes for LGV
+  - Warning confirmation if driver submits before minimum time
+  - Stores duration in database for compliance evidence
+- Added vehicleCategory field (HGV/LGV) to vehicles for timing requirements
+- **License Enforcement System**: Soft-block vehicle capacity with grace period
+  - Fleet page shows warning when at/over vehicle allowance
+  - Add Vehicle button disabled when over hard limit
+  - License page for viewing usage and requesting upgrades
+
+### 2025-12-12
 - Built complete Transport Manager Dashboard with desktop-optimized layout
 - Added manager API endpoints for auth, stats, inspections, defects, fuel, users, trailers
 - Extended database schema with defects and trailers tables
