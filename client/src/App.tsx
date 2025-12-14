@@ -19,6 +19,8 @@ import ManagerSettings from "@/pages/manager/Settings";
 import ManagerDocuments from "@/pages/manager/Documents";
 import ManagerLicense from "@/pages/manager/License";
 import ManagerAuditLog from "@/pages/manager/AuditLog";
+import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
+import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +42,8 @@ function Router() {
       <Route path="/manager/license" component={ManagerLicense} />
       <Route path="/manager/audit-log" component={ManagerAuditLog} />
       <Route path="/manager/settings" component={ManagerSettings} />
+      <Route path="/demo/dc-european" component={DCEuropeanDemo} />
+      <Route path="/demo/trucker-tim" component={TruckerTimDemo} />
       <Route component={NotFound} />
     </Switch>
   );
