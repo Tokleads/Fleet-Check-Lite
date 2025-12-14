@@ -175,9 +175,20 @@ export default function ManagerInspections() {
                         )}
                       </td>
                       <td className="px-5 py-4">
-                        <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors" data-testid={`button-view-inspection-${inspection.id}`}>
-                          <Eye className="h-4 w-4 text-slate-400" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors" data-testid={`button-view-inspection-${inspection.id}`}>
+                            <Eye className="h-4 w-4 text-slate-400" />
+                          </button>
+                          <a 
+                            href={`/api/inspections/${inspection.id}/pdf`}
+                            download
+                            className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center transition-colors"
+                            data-testid={`button-download-pdf-${inspection.id}`}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4 text-slate-400" />
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   ))

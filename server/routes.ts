@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
+import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -197,6 +198,58 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to create defect:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Generate PDF for inspection
+  app.get("/api/inspections/:id/pdf", async (req, res) => {
+    try {
+      const inspection = await storage.getInspectionById(Number(req.params.id));
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      const company = await storage.getCompanyById(inspection.companyId);
+      const vehicle = await storage.getVehicleById(inspection.vehicleId);
+      const driver = await storage.getUser(inspection.driverId);
+
+      if (!company || !vehicle || !driver) {
+        return res.status(404).json({ error: "Related data not found" });
+      }
+
+      const pdfData = {
+        id: inspection.id,
+        companyName: company.name,
+        vehicleVrm: vehicle.vrm,
+        vehicleMake: vehicle.make,
+        vehicleModel: vehicle.model,
+        driverName: driver.name,
+        type: inspection.type,
+        status: inspection.status,
+        odometer: inspection.odometer,
+        checklist: inspection.checklist as any[],
+        defects: inspection.defects as any[] | null,
+        hasTrailer: inspection.hasTrailer || false,
+        startedAt: inspection.startedAt,
+        completedAt: inspection.completedAt,
+        durationSeconds: inspection.durationSeconds,
+        createdAt: inspection.createdAt.toISOString(),
+      };
+
+      const filename = getInspectionFilename({
+        vehicleVrm: vehicle.vrm,
+        createdAt: inspection.createdAt.toISOString(),
+        type: inspection.type,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      const pdfStream = generateInspectionPDF(pdfData);
+      pdfStream.pipe(res);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
     }
   });
 

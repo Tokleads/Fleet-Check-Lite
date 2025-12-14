@@ -102,6 +102,13 @@ Access at `/manager/login` with:
 
 ## Recent Changes
 
+### Google Drive Integration (TODO)
+- User wants PDF reports uploaded to Google Drive per-company
+- Integration dismissed - need to implement manual credential configuration
+- Each company should be able to configure their own Google Drive folder in Settings
+- PDFs should be generated for inspections with date/time stamps
+- Credentials should be configurable per-tenant for white-label deployments
+
 ### 2025-12-14 (Latest)
 - **Load Security N/A Option**: When driver selects "no trailer", Load & Security section allows N/A
   - Tap cycles: unchecked -> pass -> N/A -> unchecked
