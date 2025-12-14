@@ -272,30 +272,14 @@ export default function ManagerFleet() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Registration (VRM) *</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={addFormData.vrm}
-                    onChange={(e) => { setAddFormData(d => ({ ...d, vrm: e.target.value.toUpperCase() })); setMotLookupResult(null); }}
-                    placeholder="e.g. AB12 CDE"
-                    className="flex-1 h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    data-testid="input-add-vrm"
-                  />
-                  <button
-                    type="button"
-                    onClick={lookupMot}
-                    disabled={!addFormData.vrm || addFormData.vrm.length < 5 || isLookingUpMot}
-                    className="px-3 h-11 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    data-testid="button-lookup-mot"
-                  >
-                    {isLookingUpMot ? 'Checking...' : 'Check MOT'}
-                  </button>
-                </div>
-                {motLookupResult && (
-                  <div className={`mt-2 p-2 rounded-lg text-xs ${motLookupResult.error ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'}`}>
-                    {motLookupResult.error ? motLookupResult.error : `MOT Due: ${new Date(motLookupResult.motDue!).toLocaleDateString('en-GB')} (${motLookupResult.status})`}
-                  </div>
-                )}
+                <input
+                  type="text"
+                  value={addFormData.vrm}
+                  onChange={(e) => setAddFormData(d => ({ ...d, vrm: e.target.value.toUpperCase() }))}
+                  placeholder="e.g. AB12 CDE"
+                  className="w-full h-11 px-4 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  data-testid="input-add-vrm"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">Make *</label>
