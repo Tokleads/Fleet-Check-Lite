@@ -4,42 +4,68 @@ import { useBrand } from "@/hooks/use-brand";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanInput } from "@/components/titan-ui/Input";
 import { TitanCard } from "@/components/titan-ui/Card";
-import { ArrowRight, Truck, ShieldCheck, QrCode } from "lucide-react";
+import { ArrowRight, Truck, ShieldCheck, Users, Building2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import { useToast } from "@/hooks/use-toast";
-import tenantConfig from "@/config/tenant";
+
+const DEMO_COMPANIES = [
+  {
+    code: "APEX",
+    name: "DC European Haulage",
+    description: "Large fleet operations",
+    color: "#4169b2",
+    vehicles: 15,
+    drivers: 2,
+    managerPin: "0000",
+    driverPin: "1234"
+  },
+  {
+    code: "TIM",
+    name: "Trucker Tim Transport",
+    description: "Owner-operator fleet",
+    color: "#dc2626",
+    vehicles: 10,
+    drivers: 3,
+    managerPin: "0000",
+    driverPin: "1234"
+  }
+];
 
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { setCompanyId } = useBrand();
   const { toast } = useToast();
-  const [companyCode, setCompanyCode] = useState("APEX"); // Default for demo
-  const [pin, setPin] = useState("1234");
+  const [selectedCompany, setSelectedCompany] = useState<typeof DEMO_COMPANIES[0] | null>(null);
+  const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<"driver" | "manager">("driver");
+  const [loginType, setLoginType] = useState<"driver" | "manager">("driver");
 
-  const handleStart = async (e: React.FormEvent) => {
+  const handleSelectCompany = (company: typeof DEMO_COMPANIES[0]) => {
+    setSelectedCompany(company);
+    setPin(loginType === "driver" ? company.driverPin : company.managerPin);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedCompany) return;
+    
     setIsLoading(true);
     
     try {
-      // Fetch company by code
-      const company = await api.getCompanyByCode(companyCode);
+      const company = await api.getCompanyByCode(selectedCompany.code);
       session.setCompany(company);
       setCompanyId(String(company.id));
 
-      if (mode === "driver") {
-        // For prototype: create a mock driver session with PIN
-        // In production, this would validate PIN against backend
+      if (loginType === "driver") {
         const mockDriver = {
-          id: 2, // John Doe from seed
+          id: selectedCompany.code === "APEX" ? 2 : 6,
           companyId: company.id,
-          email: "driver1@apex.com",
-          name: "John Doe",
+          email: `driver1@${selectedCompany.code.toLowerCase()}.com`,
+          name: selectedCompany.code === "APEX" ? "John Doe" : "Mike Thompson",
           role: "DRIVER" as const,
-          pin: "1234",
+          pin: pin,
           active: true,
           createdAt: new Date(),
           totpSecret: null,
@@ -48,145 +74,193 @@ export default function Landing() {
         session.setUser(mockDriver);
         setLocation("/driver");
       } else {
-        // Manager login would happen here
-        toast({
-          title: "Manager Login",
-          description: "Manager authentication not yet implemented",
+        const response = await fetch("/api/manager/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyCode: selectedCompany.code, pin }),
         });
+        
+        if (!response.ok) {
+          throw new Error("Invalid PIN");
+        }
+        
+        const data = await response.json();
+        session.setUser(data.manager);
+        session.setCompany(data.company);
+        setLocation("/manager");
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error instanceof Error ? error.message : "Company not found",
+        description: error instanceof Error ? error.message : "Invalid credentials",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleBack = () => {
+    setSelectedCompany(null);
+    setPin("");
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center relative overflow-hidden">
-      {/* Abstract Background Shapes for Premium Feel */}
       <div className="absolute top-0 left-0 w-full h-1/2 bg-slate-900 rounded-b-[3rem] shadow-2xl z-0" />
       
-      <div className="w-full max-w-md mx-auto p-6 z-10">
+      <div className="w-full max-w-lg mx-auto p-6 z-10">
         <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-6"
         >
-            {/* Header */}
-            <div className="text-center space-y-3 pt-8">
-                <div className="bg-white rounded-2xl p-4 inline-block mx-auto mb-3 shadow-xl">
-                    <div className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold text-lg bg-slate-900">
-                        TF
-                    </div>
-                </div>
-                <span className="text-xl tracking-tight">
-                    <span className="font-bold text-white">Titan</span>
-                    <span className="font-normal text-slate-400 ml-1">Fleet</span>
-                </span>
-                <p className="text-slate-400 text-sm font-medium">Driver Portal</p>
+          {/* Header */}
+          <div className="text-center space-y-3 pt-4">
+            <div className="bg-white rounded-2xl p-4 inline-block mx-auto mb-3 shadow-xl">
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold text-lg bg-slate-900">
+                TF
+              </div>
             </div>
+            <span className="text-xl tracking-tight block">
+              <span className="font-bold text-white">Titan</span>
+              <span className="font-normal text-slate-400 ml-1">Fleet</span>
+            </span>
+            <p className="text-slate-400 text-sm font-medium">Affiliate Demo Portal</p>
+          </div>
 
-            {/* Login Card */}
+          {!selectedCompany ? (
+            <>
+              {/* Demo Company Cards */}
+              <div className="space-y-3">
+                <p className="text-center text-white/70 text-sm font-medium">Select a demo company to explore:</p>
+                
+                {DEMO_COMPANIES.map((company) => (
+                  <motion.button
+                    key={company.code}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectCompany(company)}
+                    className="w-full bg-white rounded-2xl p-5 shadow-xl border-0 ring-1 ring-black/5 text-left transition-all hover:shadow-2xl"
+                    data-testid={`card-demo-${company.code.toLowerCase()}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="h-14 w-14 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                        style={{ backgroundColor: company.color }}
+                      >
+                        {company.code.substring(0, 2)}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-slate-900 text-lg">{company.name}</h3>
+                        <p className="text-slate-500 text-sm">{company.description}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                            <Truck className="h-3.5 w-3.5" /> {company.vehicles} vehicles
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                            <Users className="h-3.5 w-3.5" /> {company.drivers} drivers
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-slate-300" />
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Login Type Toggle */}
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setLoginType("driver")}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    loginType === "driver" 
+                      ? "bg-white text-slate-900 shadow-lg" 
+                      : "bg-white/10 text-white/70 hover:bg-white/20"
+                  }`}
+                  data-testid="toggle-driver"
+                >
+                  <Truck className="h-4 w-4 inline mr-2" />
+                  Driver Login
+                </button>
+                <button
+                  onClick={() => setLoginType("manager")}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    loginType === "manager" 
+                      ? "bg-white text-slate-900 shadow-lg" 
+                      : "bg-white/10 text-white/70 hover:bg-white/20"
+                  }`}
+                  data-testid="toggle-manager"
+                >
+                  <ShieldCheck className="h-4 w-4 inline mr-2" />
+                  Manager Login
+                </button>
+              </div>
+
+              {/* Demo Credentials Info */}
+              <div className="bg-white/10 backdrop-blur rounded-xl p-4 border border-white/10">
+                <p className="text-white/80 text-xs text-center">
+                  <strong>Demo Credentials:</strong> Driver PIN: 1234 | Manager PIN: 0000
+                </p>
+              </div>
+            </>
+          ) : (
+            /* Login Form */
             <TitanCard className="p-6 sm:p-8 shadow-2xl border-0 ring-1 ring-black/5 bg-white">
-                <form onSubmit={handleStart} className="space-y-6">
-                    {mode === "driver" ? (
-                        <div className="space-y-5">
-                            <div className="space-y-1.5">
-                                <label className="titan-section-label ml-1">Company Code</label>
-                                <TitanInput 
-                                    placeholder="e.g. APEX" 
-                                    value={companyCode}
-                                    onChange={(e) => setCompanyCode(e.target.value.toUpperCase())}
-                                    className="h-14 text-lg font-mono tracking-wide uppercase bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-                                    icon={<ShieldCheck className="h-5 w-5" />}
-                                    data-testid="input-company-code"
-                                />
-                            </div>
-                            
-                            <div className="space-y-1.5">
-                                <label className="titan-section-label ml-1">Driver PIN</label>
-                                <TitanInput 
-                                    placeholder="Enter 4-digit PIN" 
-                                    type="password"
-                                    value={pin}
-                                    onChange={(e) => setPin(e.target.value)}
-                                    className="h-14 text-lg bg-slate-50 border-slate-200 focus:bg-white transition-colors"
-                                    maxLength={4}
-                                    data-testid="input-pin"
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                         <div className="space-y-5">
-                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3 items-start">
-                                <ShieldCheck className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                                <div>
-                                    <p className="text-sm font-bold text-blue-900">Manager Console</p>
-                                    <p className="text-xs text-blue-700 mt-1">Please log in with your corporate credentials to access the fleet dashboard.</p>
-                                </div>
-                            </div>
-                            <TitanInput 
-                                placeholder="Email Address" 
-                                type="email"
-                                className="h-14 bg-slate-50"
-                            />
-                            <TitanInput 
-                                placeholder="Password" 
-                                type="password"
-                                className="h-14 bg-slate-50"
-                            />
-                        </div>
-                    )}
-
-                    <TitanButton 
-                        size="lg" 
-                        className="w-full h-14 text-base font-bold shadow-titan-lg shadow-primary/20"
-                        isLoading={isLoading}
-                        data-testid="button-login"
-                    >
-                        {mode === "driver" ? "Start Shift" : "Access Console"} <ArrowRight className="ml-2 h-5 w-5" />
-                    </TitanButton>
-                </form>
-
-                <div className="mt-8 pt-6 border-t border-slate-100">
-                    {mode === "driver" ? (
-                         <button 
-                            type="button"
-                            onClick={() => setMode("manager")}
-                            className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <ShieldCheck className="h-4 w-4" /> Transport Manager Login
-                        </button>
-                    ) : (
-                        <button 
-                            type="button"
-                            onClick={() => setMode("driver")}
-                            className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Truck className="h-4 w-4" /> Back to Driver Login
-                        </button>
-                    )}
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+                  <div 
+                    className="h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+                    style={{ backgroundColor: selectedCompany.color }}
+                  >
+                    {selectedCompany.code.substring(0, 2)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900">{selectedCompany.name}</h3>
+                    <p className="text-slate-500 text-sm">
+                      {loginType === "driver" ? "Driver Login" : "Manager Console"}
+                    </p>
+                  </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="titan-section-label ml-1">
+                    {loginType === "driver" ? "Driver PIN" : "Manager PIN"}
+                  </label>
+                  <TitanInput 
+                    placeholder="Enter 4-digit PIN" 
+                    type="password"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    className="h-14 text-lg bg-slate-50 border-slate-200 focus:bg-white transition-colors text-center tracking-[0.5em] font-mono"
+                    maxLength={4}
+                    data-testid="input-pin"
+                  />
+                </div>
+
+                <TitanButton 
+                  size="lg" 
+                  className="w-full h-14 text-base font-bold shadow-lg"
+                  style={{ backgroundColor: selectedCompany.color }}
+                  isLoading={isLoading}
+                  data-testid="button-login"
+                >
+                  {loginType === "driver" ? "Start Shift" : "Access Dashboard"} 
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </TitanButton>
+
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="w-full py-2 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors"
+                  data-testid="button-back"
+                >
+                  ← Choose different company
+                </button>
+              </form>
             </TitanCard>
-
-            {/* Quick Actions (Mock) */}
-            {mode === "driver" && (
-                <div className="grid grid-cols-2 gap-4">
-                    <button className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center gap-2 text-white/60 hover:bg-white/10 hover:text-white transition-all">
-                        <QrCode className="h-6 w-6" />
-                        <span className="text-xs font-medium">Scan Vehicle</span>
-                    </button>
-                    <button className="p-4 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center gap-2 text-white/60 hover:bg-white/10 hover:text-white transition-all">
-                        <ShieldCheck className="h-6 w-6" />
-                        <span className="text-xs font-medium">Help & Support</span>
-                    </button>
-                </div>
-            )}
+          )}
         </motion.div>
       </div>
       
