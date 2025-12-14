@@ -58,23 +58,24 @@ async function seed() {
   console.log(`✅ Created users: ${manager.name}, ${driver1.name}, ${driver2.name}`);
 
   // Create 16 vehicles (1 over allowance of 15, demonstrating grace mode)
+  // Mix of HGV (10 min check) and LGV (5 min check) for DVSA timing compliance
   const vehicleData = [
-    { vrm: "KX65ABC", make: "DAF", model: "XF 530", fleetNumber: "F001", motDue: new Date("2025-11-20") },
-    { vrm: "LR19XYZ", make: "Scania", model: "R450", fleetNumber: "F002", motDue: new Date("2025-06-15") },
-    { vrm: "MN22OPA", make: "Mercedes", model: "Actros", fleetNumber: "F003", motDue: new Date("2025-08-01") },
-    { vrm: "GL70EFH", make: "Volvo", model: "FH16", fleetNumber: "F004", motDue: new Date("2025-12-10") },
-    { vrm: "BD18JKL", make: "MAN", model: "TGX", fleetNumber: "F005", motDue: new Date("2025-03-30") },
-    { vrm: "PO21GHT", make: "Iveco", model: "S-WAY", fleetNumber: "F006", motDue: new Date("2025-09-15") },
-    { vrm: "RT68FGH", make: "DAF", model: "CF", fleetNumber: "F007", motDue: new Date("2025-07-22") },
-    { vrm: "YU19KLM", make: "Scania", model: "G410", fleetNumber: "F008", motDue: new Date("2025-10-05") },
-    { vrm: "DF22NPQ", make: "Mercedes", model: "Arocs", fleetNumber: "F009", motDue: new Date("2025-04-18") },
-    { vrm: "WE20RST", make: "Volvo", model: "FM", fleetNumber: "F010", motDue: new Date("2025-05-28") },
-    { vrm: "SA18UVW", make: "MAN", model: "TGL", fleetNumber: "F011", motDue: new Date("2025-08-14") },
-    { vrm: "QW21XYZ", make: "Renault", model: "T High", fleetNumber: "F012", motDue: new Date("2025-11-03") },
-    { vrm: "ZX19ABC", make: "DAF", model: "LF", fleetNumber: "F013", motDue: new Date("2025-06-30") },
-    { vrm: "CV22DEF", make: "Scania", model: "P320", fleetNumber: "F014", motDue: new Date("2025-09-20") },
-    { vrm: "BN20GHI", make: "Iveco", model: "Eurocargo", fleetNumber: "F015", motDue: new Date("2025-12-25") },
-    { vrm: "HJ23KLM", make: "DAF", model: "XG+", fleetNumber: "F016", motDue: new Date("2026-01-15") }
+    { vrm: "KX65ABC", make: "DAF", model: "XF 530", fleetNumber: "F001", vehicleCategory: "HGV", motDue: new Date("2025-11-20") },
+    { vrm: "LR19XYZ", make: "Scania", model: "R450", fleetNumber: "F002", vehicleCategory: "HGV", motDue: new Date("2025-06-15") },
+    { vrm: "MN22OPA", make: "Mercedes", model: "Actros", fleetNumber: "F003", vehicleCategory: "HGV", motDue: new Date("2025-08-01") },
+    { vrm: "GL70EFH", make: "Volvo", model: "FH16", fleetNumber: "F004", vehicleCategory: "HGV", motDue: new Date("2025-12-10") },
+    { vrm: "BD18JKL", make: "MAN", model: "TGX", fleetNumber: "F005", vehicleCategory: "HGV", motDue: new Date("2025-03-30") },
+    { vrm: "PO21GHT", make: "Iveco", model: "S-WAY", fleetNumber: "F006", vehicleCategory: "HGV", motDue: new Date("2025-09-15") },
+    { vrm: "RT68FGH", make: "DAF", model: "CF", fleetNumber: "F007", vehicleCategory: "HGV", motDue: new Date("2025-07-22") },
+    { vrm: "YU19KLM", make: "Scania", model: "G410", fleetNumber: "F008", vehicleCategory: "HGV", motDue: new Date("2025-10-05") },
+    { vrm: "DF22NPQ", make: "Mercedes", model: "Arocs", fleetNumber: "F009", vehicleCategory: "HGV", motDue: new Date("2025-04-18") },
+    { vrm: "WE20RST", make: "Volvo", model: "FM", fleetNumber: "F010", vehicleCategory: "HGV", motDue: new Date("2025-05-28") },
+    { vrm: "SA18UVW", make: "MAN", model: "TGL", fleetNumber: "F011", vehicleCategory: "LGV", motDue: new Date("2025-08-14") },
+    { vrm: "QW21XYZ", make: "Renault", model: "T High", fleetNumber: "F012", vehicleCategory: "HGV", motDue: new Date("2025-11-03") },
+    { vrm: "ZX19ABC", make: "DAF", model: "LF", fleetNumber: "F013", vehicleCategory: "LGV", motDue: new Date("2025-06-30") },
+    { vrm: "CV22DEF", make: "Scania", model: "P320", fleetNumber: "F014", vehicleCategory: "LGV", motDue: new Date("2025-09-20") },
+    { vrm: "BN20GHI", make: "Iveco", model: "Eurocargo", fleetNumber: "F015", vehicleCategory: "LGV", motDue: new Date("2025-12-25") },
+    { vrm: "HJ23KLM", make: "DAF", model: "XG+", fleetNumber: "F016", vehicleCategory: "HGV", motDue: new Date("2026-01-15") }
   ];
 
   for (const v of vehicleData) {

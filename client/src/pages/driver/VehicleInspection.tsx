@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { DriverLayout } from "@/components/layout/AppShell";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
@@ -7,10 +7,14 @@ import { useLocation, useRoute, useSearch } from "wouter";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import type { Vehicle } from "@shared/schema";
-import { Check, ChevronLeft, ChevronDown, ChevronUp, Camera, AlertTriangle, Loader2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronDown, ChevronUp, Camera, AlertTriangle, Loader2, X, Play, Clock, Timer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Textarea } from "@/components/ui/textarea";
+
+// DVSA minimum check times in seconds
+const MIN_CHECK_TIME_HGV = 10 * 60; // 10 minutes for HGV
+const MIN_CHECK_TIME_LGV = 5 * 60;  // 5 minutes for LGV
 
 type CheckStatus = "unchecked" | "pass" | "fail";
 
@@ -173,9 +177,22 @@ export default function VehicleInspection() {
   const [defectSheetItem, setDefectSheetItem] = useState<{ sectionId: string; itemId: string } | null>(null);
   const [defectNote, setDefectNote] = useState("");
   const [defectPhoto, setDefectPhoto] = useState<string | null>(null);
+  
+  // DVSA Auditable Timing State
+  const [checkStarted, setCheckStarted] = useState(false);
+  const [startedAt, setStartedAt] = useState<Date | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [showMinTimeWarning, setShowMinTimeWarning] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const company = session.getCompany();
   const user = session.getUser();
+  
+  // Determine minimum time based on vehicle category
+  const vehicleCategory = (vehicle as any)?.vehicleCategory || "HGV";
+  const minCheckTime = vehicleCategory === "LGV" ? MIN_CHECK_TIME_LGV : MIN_CHECK_TIME_HGV;
+  const minCheckTimeMinutes = Math.floor(minCheckTime / 60);
+  const hasMetMinTime = elapsedSeconds >= minCheckTime;
   
   // Format title based on inspection type
   const checkTitle = inspectionType === "end_of_shift" ? "End of Shift Check" : "Safety Check";
@@ -192,6 +209,40 @@ export default function VehicleInspection() {
       loadVehicle(Number(params.id));
     }
   }, [params?.id]);
+  
+  // Timer effect - updates every second when check is started
+  useEffect(() => {
+    if (checkStarted && startedAt) {
+      timerRef.current = setInterval(() => {
+        const now = new Date();
+        const elapsed = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+        setElapsedSeconds(elapsed);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [checkStarted, startedAt]);
+  
+  // Format elapsed time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+  
+  // Start the check - records startedAt timestamp
+  const handleStartCheck = () => {
+    const now = new Date();
+    setStartedAt(now);
+    setCheckStarted(true);
+    toast({
+      title: "Check Started",
+      description: `Timer running. DVSA recommends minimum ${minCheckTimeMinutes} minutes for ${vehicleCategory} vehicles.`,
+    });
+  };
 
   const loadVehicle = async (id: number) => {
     setIsLoading(true);
@@ -288,9 +339,23 @@ export default function VehicleInspection() {
       toast({ variant: "destructive", title: "Error", description: "Session expired. Please log in again." });
       return;
     }
+    
+    // Check if minimum time is met - show warning if not
+    if (!hasMetMinTime && !showMinTimeWarning) {
+      setShowMinTimeWarning(true);
+      toast({
+        variant: "destructive",
+        title: "DVSA Time Warning",
+        description: `Checks should take at least ${minCheckTimeMinutes} minutes. Continue anyway?`,
+      });
+      return; // User must tap submit again to confirm
+    }
 
     setIsSubmitting(true);
     try {
+      const completedAt = new Date();
+      const durationSeconds = startedAt ? Math.floor((completedAt.getTime() - startedAt.getTime()) / 1000) : 0;
+      
       const checklist = sections.flatMap(s => 
         s.items.map(item => ({
           section: s.title,
@@ -314,13 +379,22 @@ export default function VehicleInspection() {
         checklist,
         defects: failedItems.length > 0 ? failedItems.map(i => ({ item: i.label, note: i.defectNote })) : null,
         hasTrailer: hasTrailer,
+        // DVSA Auditable Timing
+        startedAt: startedAt?.toISOString(),
+        completedAt: completedAt.toISOString(),
+        durationSeconds,
+        vehicleCategory,
       });
+
+      const timeNote = durationSeconds < minCheckTime 
+        ? ` (Completed in ${formatTime(durationSeconds)} - under recommended time)`
+        : ` (Duration: ${formatTime(durationSeconds)})`;
 
       toast({
         title: failedItems.length > 0 ? "Check Submitted with Defects" : "Safety Check Complete",
         description: failedItems.length > 0 
-          ? `${failedItems.length} defect(s) reported. Manager notified.` 
-          : "Vehicle passed. Safe to drive.",
+          ? `${failedItems.length} defect(s) reported. Manager notified.${timeNote}` 
+          : `Vehicle passed. Safe to drive.${timeNote}`,
         className: failedItems.length > 0 ? "border-amber-500 bg-amber-50" : "border-green-500 bg-green-50",
       });
 
@@ -354,10 +428,57 @@ export default function VehicleInspection() {
     );
   }
 
+  // Start Check Screen - shown before inspection begins
+  if (!checkStarted) {
+    return (
+      <DriverLayout>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
+          <div className="titan-card p-8 text-center max-w-md w-full">
+            <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Timer className="h-10 w-10 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-2">{checkTitle}</h1>
+            <p className="text-slate-600 mb-2">{vehicle.vrm} · {vehicle.make} {vehicle.model}</p>
+            
+            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium mb-6 ${
+              vehicleCategory === 'HGV' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+            }`}>
+              <Clock className="h-4 w-4" />
+              {vehicleCategory} · Min {minCheckTimeMinutes} minutes
+            </div>
+            
+            <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm text-slate-600">
+                <strong className="text-slate-900">DVSA Compliance:</strong> This check is timed to provide evidence that you dedicated the required time to your vehicle inspection.
+              </p>
+            </div>
+            
+            <TitanButton
+              size="lg"
+              className="w-full"
+              onClick={handleStartCheck}
+              data-testid="button-start-check"
+            >
+              <Play className="h-5 w-5 mr-2" />
+              Start Check
+            </TitanButton>
+            
+            <button
+              onClick={() => setLocation(`/driver/vehicle/${vehicle.id}`)}
+              className="mt-4 text-sm text-slate-500 hover:text-slate-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </DriverLayout>
+    );
+  }
+
   return (
     <DriverLayout>
       <div className="pb-28">
-        {/* Sticky Header with Progress - Tighter Hierarchy */}
+        {/* Sticky Header with Progress and Timer */}
         <div className="sticky top-0 bg-white/95 backdrop-blur z-30 -mx-4 px-4 pt-2 pb-3 border-b border-slate-200/60">
           <div className="flex items-center gap-3 mb-3">
             <TitanButton variant="ghost" size="icon" onClick={() => setLocation(`/driver/vehicle/${vehicle.id}`)} className="h-9 w-9 -ml-2">
@@ -367,20 +488,45 @@ export default function VehicleInspection() {
               <h1 className="text-[20px] font-semibold tracking-tight text-slate-900 truncate">{checkTitle}</h1>
               <p className="text-[13px] text-slate-500">{vehicle.vrm} · {checkDate}</p>
             </div>
-            <div className="text-right">
-              <div className="text-[13px] font-semibold text-primary">{checkedItems.length} of {allItems.length}</div>
-              <div className="text-[11px] text-slate-400">completed</div>
+            {/* Live Timer Display */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${
+              hasMetMinTime ? 'bg-emerald-100' : 'bg-amber-100'
+            }`} data-testid="timer-display">
+              <Timer className={`h-4 w-4 ${hasMetMinTime ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <span className={`font-mono font-bold text-lg ${hasMetMinTime ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {formatTime(elapsedSeconds)}
+              </span>
             </div>
           </div>
           
-          {/* Progress Bar */}
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <motion.div 
-              className={`h-full ${failedItems.length > 0 ? 'bg-amber-500' : 'bg-primary'}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3 }}
-            />
+          {/* Min Time Progress Bar */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div 
+                className={`h-full ${hasMetMinTime ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (elapsedSeconds / minCheckTime) * 100)}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <span className="text-[11px] text-slate-500 whitespace-nowrap">
+              {hasMetMinTime ? '✓ Min time met' : `${minCheckTimeMinutes}min req`}
+            </span>
+          </div>
+          
+          {/* Check Progress Bar */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div 
+                className={`h-full ${failedItems.length > 0 ? 'bg-amber-500' : 'bg-primary'}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <span className="text-[11px] text-slate-500 whitespace-nowrap">
+              {checkedItems.length}/{allItems.length} items
+            </span>
           </div>
           {failedItems.length > 0 && (
             <p className="text-[12px] text-amber-600 mt-1.5 font-medium">{failedItems.length} fault(s) recorded</p>

@@ -70,6 +70,7 @@ export const vehicles = pgTable("vehicles", {
   make: text("make").notNull(),
   model: text("model").notNull(),
   fleetNumber: varchar("fleet_number", { length: 50 }),
+  vehicleCategory: varchar("vehicle_category", { length: 10 }).default("HGV"), // HGV | LGV - determines min check time
   motDue: timestamp("mot_due"),
   taxDue: timestamp("tax_due"),
   active: boolean("active").default(true),
@@ -93,6 +94,13 @@ export const inspections = pgTable("inspections", {
   checklist: jsonb("checklist").notNull(), // Array of check items with pass/fail
   defects: jsonb("defects"), // Array of defect notes
   driveFolderId: text("drive_folder_id"),
+  
+  // DVSA Auditable Timing - records start/end for compliance evidence
+  startedAt: timestamp("started_at"), // When driver clicked Start
+  completedAt: timestamp("completed_at"), // When driver submitted
+  durationSeconds: integer("duration_seconds"), // Total time spent on check
+  vehicleCategory: varchar("vehicle_category", { length: 10 }), // HGV | LGV - for min time requirement
+  
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
