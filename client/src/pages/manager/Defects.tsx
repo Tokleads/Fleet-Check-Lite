@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ManagerLayout } from "./ManagerLayout";
 import { session } from "@/lib/session";
@@ -8,7 +9,8 @@ import {
   Wrench,
   Filter,
   Truck,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 
 const statusColors: Record<string, string> = {
@@ -34,6 +36,25 @@ export default function ManagerDefects() {
   const company = session.getCompany();
   const companyId = company?.id;
   const queryClient = useQueryClient();
+  
+  const [showFilters, setShowFilters] = useState(false);
+  const [severityFilter, setSeverityFilter] = useState<string>("");
+  const [vehicleFilter, setVehicleFilter] = useState<string>("");
+
+  // Close filter dropdown when clicking outside
+  useEffect(() => {
+    if (!showFilters) return;
+    
+    function handleClickOutside(event: PointerEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-filter-dropdown]')) {
+        setShowFilters(false);
+      }
+    }
+    
+    document.addEventListener('pointerdown', handleClickOutside, true);
+    return () => document.removeEventListener('pointerdown', handleClickOutside, true);
+  }, [showFilters]);
 
   const { data: defects, isLoading } = useQuery({
     queryKey: ["manager-defects", companyId],
@@ -76,8 +97,22 @@ export default function ManagerDefects() {
     return vehicle?.vrm || "Unknown";
   };
 
+  // Apply filters to defects
+  const filteredDefects = defects?.filter((d: any) => {
+    if (severityFilter && d.severity !== severityFilter) return false;
+    if (vehicleFilter && d.vehicleId !== parseInt(vehicleFilter)) return false;
+    return true;
+  }) || [];
+
   const getDefectsByStatus = (status: string) => 
-    defects?.filter((d: any) => d.status === status) || [];
+    filteredDefects.filter((d: any) => d.status === status);
+  
+  const activeFiltersCount = (severityFilter ? 1 : 0) + (vehicleFilter ? 1 : 0);
+  
+  const clearFilters = () => {
+    setSeverityFilter("");
+    setVehicleFilter("");
+  };
 
   return (
     <ManagerLayout>
@@ -87,10 +122,84 @@ export default function ManagerDefects() {
             <h1 className="text-2xl font-bold text-slate-900">Defects</h1>
             <p className="text-slate-500 mt-0.5">Track and manage reported vehicle defects</p>
           </div>
-          <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
-            <Filter className="h-4 w-4" />
-            Filters
-          </button>
+          <div className="relative" data-filter-dropdown>
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-2 px-4 py-2 bg-white border rounded-xl text-sm font-medium transition-colors ${
+                activeFiltersCount > 0 
+                  ? 'border-blue-300 text-blue-700 bg-blue-50' 
+                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              data-testid="button-defects-filters"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+            
+            {showFilters && (
+              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl border border-slate-200 shadow-lg z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">Filters</h3>
+                  {activeFiltersCount > 0 && (
+                    <button 
+                      onClick={clearFilters}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                
+                <div className="p-4 space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Severity</label>
+                    <select
+                      value={severityFilter}
+                      onChange={(e) => setSeverityFilter(e.target.value)}
+                      className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      data-testid="select-severity-filter"
+                    >
+                      <option value="">All severities</option>
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="CRITICAL">Critical</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Vehicle</label>
+                    <select
+                      value={vehicleFilter}
+                      onChange={(e) => setVehicleFilter(e.target.value)}
+                      className="w-full h-10 px-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      data-testid="select-vehicle-filter"
+                    >
+                      <option value="">All vehicles</option>
+                      {vehicles?.map((v: any) => (
+                        <option key={v.id} value={v.id}>{v.vrm}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="px-4 py-3 bg-slate-50 border-t border-slate-100">
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="w-full h-10 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                    data-testid="button-apply-filters"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
