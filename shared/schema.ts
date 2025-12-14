@@ -241,15 +241,19 @@ export type InsertDocumentAcknowledgment = z.infer<typeof insertDocumentAcknowle
 export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
   companyId: integer("company_id").references(() => companies.id).notNull(),
-  managerId: integer("manager_id").references(() => users.id).notNull(),
-  action: varchar("action", { length: 50 }).notNull(), // CREATE | UPDATE | DELETE | LOGIN | EXPORT
-  entity: varchar("entity", { length: 50 }).notNull(), // VEHICLE | DEFECT | INSPECTION | USER
-  entityId: integer("entity_id"),
-  details: jsonb("details"),
+  userId: integer("user_id").references(() => users.id), // Who performed the action (null for system)
+  action: varchar("action", { length: 50 }).notNull(), // LOGIN | LOGOUT | CREATE | UPDATE | DELETE | VIEW | EXPORT
+  entity: varchar("entity", { length: 50 }).notNull(), // USER | VEHICLE | INSPECTION | DEFECT | FUEL | SETTINGS | SESSION
+  entityId: integer("entity_id"), // ID of the affected entity
+  details: jsonb("details"), // Additional context (old/new values, metadata)
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv6 compatible
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 // License upgrade requests
 export const licenseUpgradeRequests = pgTable("license_upgrade_requests", {

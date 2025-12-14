@@ -365,6 +365,17 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Invalid PIN" });
       }
 
+      // Audit log: Manager login
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: company.id,
+        userId: manager.id,
+        action: 'LOGIN',
+        entity: 'SESSION',
+        details: { managerName: manager.name },
+        req,
+      });
+
       res.json({ manager, company });
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -434,10 +445,24 @@ export async function registerRoutes(
 
   app.patch("/api/manager/defects/:id", async (req, res) => {
     try {
-      const updated = await storage.updateDefect(Number(req.params.id), req.body);
+      const defectId = Number(req.params.id);
+      const updated = await storage.updateDefect(defectId, req.body);
       if (!updated) {
         return res.status(404).json({ error: "Defect not found" });
       }
+      
+      // Audit log: Defect updated
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'DEFECT',
+        entityId: defectId,
+        details: { status: updated.status, changes: req.body },
+        req,
+      });
+      
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -470,10 +495,25 @@ export async function registerRoutes(
   // Vehicle CRUD for manager
   app.patch("/api/manager/vehicles/:id", async (req, res) => {
     try {
-      const updated = await storage.updateVehicle(Number(req.params.id), req.body);
+      const vehicleId = Number(req.params.id);
+      const oldVehicle = await storage.getVehicleById(vehicleId);
+      const updated = await storage.updateVehicle(vehicleId, req.body);
       if (!updated) {
         return res.status(404).json({ error: "Vehicle not found" });
       }
+      
+      // Audit log: Vehicle updated
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'VEHICLE',
+        entityId: vehicleId,
+        details: { vrm: updated.vrm, changes: req.body },
+        req,
+      });
+      
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -496,6 +536,18 @@ export async function registerRoutes(
       
       const vehicle = await storage.createVehicle(validated);
       
+      // Audit log: Vehicle created
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: vehicle.companyId,
+        userId: req.body.managerId || null,
+        action: 'CREATE',
+        entity: 'VEHICLE',
+        entityId: vehicle.id,
+        details: { vrm: vehicle.vrm, make: vehicle.make, model: vehicle.model },
+        req,
+      });
+      
       // Return with warning if at limit or in grace
       if (usage.state === 'at_limit' || usage.state === 'in_grace') {
         return res.status(201).json({ 
@@ -516,7 +568,25 @@ export async function registerRoutes(
 
   app.delete("/api/manager/vehicles/:id", async (req, res) => {
     try {
-      await storage.deleteVehicle(Number(req.params.id));
+      const vehicleId = Number(req.params.id);
+      const vehicle = await storage.getVehicleById(vehicleId);
+      
+      await storage.deleteVehicle(vehicleId);
+      
+      // Audit log: Vehicle deleted
+      if (vehicle) {
+        const { logAudit } = await import("./auditService");
+        await logAudit({
+          companyId: vehicle.companyId,
+          userId: req.body.managerId || null,
+          action: 'DELETE',
+          entity: 'VEHICLE',
+          entityId: vehicleId,
+          details: { vrm: vehicle.vrm },
+          req,
+        });
+      }
+      
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
@@ -543,6 +613,85 @@ export async function registerRoutes(
       const userList = await storage.getUsersByCompany(Number(req.params.companyId));
       res.json(userList);
     } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== AUDIT LOG API ROUTES ====================
+
+  // Get audit logs for company
+  app.get("/api/manager/audit-logs/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { limit = '50', offset = '0', entity, action } = req.query;
+      
+      const options = {
+        limit: Number(limit),
+        offset: Number(offset),
+        entity: entity as string | undefined,
+        action: action as string | undefined,
+      };
+      
+      const [logs, total] = await Promise.all([
+        storage.getAuditLogs(companyId, options),
+        storage.getAuditLogCount(companyId, { entity: options.entity, action: options.action }),
+      ]);
+      
+      // Fetch user details for each log
+      const logsWithUsers = await Promise.all(
+        logs.map(async (log) => {
+          let userName = 'System';
+          if (log.userId) {
+            const user = await storage.getUser(log.userId);
+            userName = user?.name || 'Unknown';
+          }
+          return { ...log, userName };
+        })
+      );
+      
+      res.json({ logs: logsWithUsers, total, limit: options.limit, offset: options.offset });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Export audit logs as CSV
+  app.get("/api/manager/audit-logs/:companyId/export", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { entity, action } = req.query;
+      
+      const logs = await storage.getAuditLogs(companyId, {
+        limit: 10000,
+        entity: entity as string | undefined,
+        action: action as string | undefined,
+      });
+      
+      // Fetch user details
+      const logsWithUsers = await Promise.all(
+        logs.map(async (log) => {
+          let userName = 'System';
+          if (log.userId) {
+            const user = await storage.getUser(log.userId);
+            userName = user?.name || 'Unknown';
+          }
+          return { ...log, userName };
+        })
+      );
+      
+      // Generate CSV
+      const csvHeaders = 'Timestamp,User,Action,Entity,Entity ID,Details,IP Address\n';
+      const csvRows = logsWithUsers.map(log => {
+        const details = log.details ? JSON.stringify(log.details).replace(/"/g, '""') : '';
+        return `"${log.createdAt.toISOString()}","${log.userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;
+      }).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=audit-log-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send(csvHeaders + csvRows);
+    } catch (error) {
+      console.error("Error exporting audit logs:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

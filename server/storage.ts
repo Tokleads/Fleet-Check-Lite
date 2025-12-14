@@ -10,8 +10,9 @@ import {
   type Document, type InsertDocument,
   type DocumentAcknowledgment, type InsertDocumentAcknowledgment,
   type LicenseUpgradeRequest, type InsertLicenseUpgradeRequest,
+  type AuditLog, type InsertAuditLog,
   type VehicleUsageInfo, type VehicleUsageState,
-  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests
+  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
@@ -94,6 +95,11 @@ export interface IStorage {
   
   // Company settings
   updateCompany(id: number, updates: Partial<Company>): Promise<Company | undefined>;
+  
+  // Audit log operations
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(companyId: number, options?: { limit?: number; offset?: number; entity?: string; action?: string }): Promise<AuditLog[]>;
+  getAuditLogCount(companyId: number, options?: { entity?: string; action?: string }): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -538,6 +544,52 @@ export class DatabaseStorage implements IStorage {
       .where(eq(companies.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Audit log operations
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getAuditLogs(companyId: number, options?: { limit?: number; offset?: number; entity?: string; action?: string }): Promise<AuditLog[]> {
+    const limit = options?.limit || 50;
+    const offset = options?.offset || 0;
+    
+    let conditions = [eq(auditLogs.companyId, companyId)];
+    
+    if (options?.entity) {
+      conditions.push(eq(auditLogs.entity, options.entity));
+    }
+    if (options?.action) {
+      conditions.push(eq(auditLogs.action, options.action));
+    }
+    
+    const logs = await db.select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    return logs;
+  }
+
+  async getAuditLogCount(companyId: number, options?: { entity?: string; action?: string }): Promise<number> {
+    let conditions = [eq(auditLogs.companyId, companyId)];
+    
+    if (options?.entity) {
+      conditions.push(eq(auditLogs.entity, options.entity));
+    }
+    if (options?.action) {
+      conditions.push(eq(auditLogs.action, options.action));
+    }
+    
+    const [result] = await db.select({ count: count() })
+      .from(auditLogs)
+      .where(and(...conditions));
+    
+    return result?.count || 0;
   }
 }
 
