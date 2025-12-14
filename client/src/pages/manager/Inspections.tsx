@@ -20,6 +20,10 @@ export default function ManagerInspections() {
   const companyId = company?.id;
   const [page, setPage] = useState(0);
   const pageSize = 20;
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterVehicle, setFilterVehicle] = useState<string>('all');
+  const [filterDriver, setFilterDriver] = useState<string>('all');
 
   const { data: inspections, isLoading } = useQuery({
     queryKey: ["manager-inspections", companyId, page],
@@ -131,7 +135,11 @@ export default function ManagerInspections() {
             <p className="text-slate-500 mt-0.5">All vehicle inspection records</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" data-testid="button-inspections-filters">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-colors ${showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+              data-testid="button-inspections-filters"
+            >
               <Filter className="h-4 w-4" />
               Filters
             </button>
@@ -155,6 +163,60 @@ export default function ManagerInspections() {
             </button>
           </div>
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-center gap-4" data-testid="panel-filters">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-600">Status:</label>
+              <select 
+                value={filterStatus} 
+                onChange={(e) => { setFilterStatus(e.target.value); setPage(0); }}
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+                data-testid="select-filter-status"
+              >
+                <option value="all">All</option>
+                <option value="PASS">Pass</option>
+                <option value="FAIL">Defects</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-600">Vehicle:</label>
+              <select 
+                value={filterVehicle} 
+                onChange={(e) => { setFilterVehicle(e.target.value); setPage(0); }}
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+                data-testid="select-filter-vehicle"
+              >
+                <option value="all">All Vehicles</option>
+                {vehicles?.map((v: any) => (
+                  <option key={v.id} value={v.id}>{v.vrm} - {v.make} {v.model}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-slate-600">Driver:</label>
+              <select 
+                value={filterDriver} 
+                onChange={(e) => { setFilterDriver(e.target.value); setPage(0); }}
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+                data-testid="select-filter-driver"
+              >
+                <option value="all">All Drivers</option>
+                {users?.filter((u: any) => u.role === 'DRIVER').map((u: any) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            <button 
+              onClick={() => { setFilterStatus('all'); setFilterVehicle('all'); setFilterDriver('all'); setPage(0); }}
+              className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              data-testid="button-reset-filters"
+            >
+              Reset
+            </button>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -183,15 +245,22 @@ export default function ManagerInspections() {
                       <td className="px-5 py-4"><div className="h-8 w-8 bg-slate-100 rounded animate-pulse" /></td>
                     </tr>
                   ))
-                ) : inspections?.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-16 text-center">
-                      <ClipboardCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                      <p className="text-slate-500">No inspections found</p>
-                    </td>
-                  </tr>
-                ) : (
-                  inspections?.map((inspection: any) => (
+                ) : (() => {
+                  const filteredInspections = inspections?.filter((inspection: any) => {
+                    if (filterStatus !== 'all' && inspection.status !== filterStatus) return false;
+                    if (filterVehicle !== 'all' && inspection.vehicleId !== Number(filterVehicle)) return false;
+                    if (filterDriver !== 'all' && inspection.driverId !== Number(filterDriver)) return false;
+                    return true;
+                  });
+                  return filteredInspections?.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-16 text-center">
+                        <ClipboardCheck className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500">No inspections found</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInspections?.map((inspection: any) => (
                     <tr key={inspection.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2.5">
@@ -262,8 +331,9 @@ export default function ManagerInspections() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                    ))
+                  );
+                })()}
               </tbody>
             </table>
           </div>
