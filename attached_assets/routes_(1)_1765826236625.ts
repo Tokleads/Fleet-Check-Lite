@@ -1,0 +1,1276 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema } from "@shared/schema";
+import { z } from "zod";
+import { dvsaService } from "./dvsa";
+import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
+
+export async function registerRoutes(
+  httpServer: Server,
+  app: Express
+): Promise<Server> {
+  // Company lookup
+  app.get("/api/company/:code", async (req, res) => {
+    try {
+      const company = await storage.getCompanyByCode(req.params.code);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Vehicle search
+  app.get("/api/vehicles/search", async (req, res) => {
+    try {
+      const { companyId, query } = req.query;
+      if (!companyId || !query) {
+        return res.status(400).json({ error: "Missing companyId or query" });
+      }
+      
+      const results = await storage.searchVehicles(Number(companyId), String(query));
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all vehicles for company
+  app.get("/api/vehicles", async (req, res) => {
+    try {
+      const { companyId } = req.query;
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      const vehicleList = await storage.getVehiclesByCompany(Number(companyId));
+      res.json(vehicleList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get recent vehicles for driver
+  app.get("/api/vehicles/recent", async (req, res) => {
+    try {
+      const { companyId, driverId, limit = '5' } = req.query;
+      if (!companyId || !driverId) {
+        return res.status(400).json({ error: "Missing companyId or driverId" });
+      }
+      
+      const recentVehicles = await storage.getRecentVehicles(
+        Number(companyId),
+        Number(driverId),
+        Number(limit)
+      );
+      res.json(recentVehicles);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get vehicle by ID
+  app.get("/api/vehicles/:id", async (req, res) => {
+    try {
+      const vehicle = await storage.getVehicleById(Number(req.params.id));
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      res.json(vehicle);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create inspection
+  app.post("/api/inspections", async (req, res) => {
+    try {
+      const validated = insertInspectionSchema.parse(req.body);
+      const inspection = await storage.createInspection(validated);
+      
+      // Track vehicle usage
+      await storage.trackVehicleUsage(
+        inspection.companyId,
+        inspection.driverId,
+        inspection.vehicleId
+      );
+      
+      // Auto-upload PDF to Google Drive if configured (async, non-blocking)
+      setImmediate(async () => {
+        try {
+          const company = await storage.getCompanyById(inspection.companyId);
+          if (company?.googleDriveConnected && company.driveRefreshToken) {
+            const vehicle = await storage.getVehicleById(inspection.vehicleId);
+            const driver = await storage.getUser(inspection.driverId);
+            
+            if (vehicle && driver) {
+              const { generateInspectionPDF, getInspectionFilename } = await import("./pdfService");
+              const { googleDriveService } = await import("./googleDriveService");
+              
+              const pdfData = {
+                id: inspection.id,
+                companyName: company.name,
+                vehicleVrm: vehicle.vrm,
+                vehicleMake: vehicle.make,
+                vehicleModel: vehicle.model,
+                driverName: driver.name,
+                type: inspection.type,
+                status: inspection.status,
+                odometer: inspection.odometer,
+                checklist: inspection.checklist as any[],
+                defects: inspection.defects as any[] | null,
+                hasTrailer: inspection.hasTrailer || false,
+                startedAt: inspection.startedAt?.toISOString() || null,
+                completedAt: inspection.completedAt?.toISOString() || null,
+                durationSeconds: inspection.durationSeconds,
+                createdAt: inspection.createdAt.toISOString(),
+              };
+              
+              const filename = getInspectionFilename({
+                vehicleVrm: vehicle.vrm,
+                createdAt: inspection.createdAt.toISOString(),
+                type: inspection.type,
+              });
+              
+              const pdfStream = generateInspectionPDF(pdfData);
+              
+              // Decrypt all stored credentials
+              const { decrypt } = await import("./encryption");
+              const decryptedClientId = decrypt(company.driveClientId!);
+              const decryptedClientSecret = decrypt(company.driveClientSecret!);
+              const decryptedToken = decrypt(company.driveRefreshToken!);
+              
+              const result = await googleDriveService.uploadPDF(pdfStream, filename, {
+                clientId: decryptedClientId,
+                clientSecret: decryptedClientSecret,
+                refreshToken: decryptedToken,
+                folderId: company.driveRootFolderId || undefined,
+              });
+              
+              if (result.success) {
+                console.log(`PDF uploaded to Google Drive: ${result.fileId}`);
+              } else {
+                console.error(`Google Drive upload failed: ${result.error}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Google Drive auto-upload error:', err);
+        }
+      });
+      
+      res.status(201).json(inspection);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get driver's inspections
+  app.get("/api/inspections", async (req, res) => {
+    try {
+      const { companyId, driverId, days = '7' } = req.query;
+      if (!companyId || !driverId) {
+        return res.status(400).json({ error: "Missing companyId or driverId" });
+      }
+      
+      const inspectionList = await storage.getInspectionsByDriver(
+        Number(companyId),
+        Number(driverId),
+        Number(days)
+      );
+      res.json(inspectionList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all inspections for company (manager view)
+  app.get("/api/inspections/company/:companyId", async (req, res) => {
+    try {
+      const inspectionList = await storage.getInspectionsByCompany(Number(req.params.companyId));
+      res.json(inspectionList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create fuel entry
+  app.post("/api/fuel", async (req, res) => {
+    try {
+      const validated = insertFuelEntrySchema.parse(req.body);
+      const fuelEntry = await storage.createFuelEntry(validated);
+      
+      // Track vehicle usage
+      await storage.trackVehicleUsage(
+        fuelEntry.companyId,
+        fuelEntry.driverId,
+        fuelEntry.vehicleId
+      );
+      
+      res.status(201).json(fuelEntry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get driver's fuel entries
+  app.get("/api/fuel", async (req, res) => {
+    try {
+      const { companyId, driverId, days = '7' } = req.query;
+      if (!companyId || !driverId) {
+        return res.status(400).json({ error: "Missing companyId or driverId" });
+      }
+      
+      const entries = await storage.getFuelEntriesByDriver(
+        Number(companyId),
+        Number(driverId),
+        Number(days)
+      );
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create defect report (driver)
+  app.post("/api/defects", async (req, res) => {
+    try {
+      const { companyId, vehicleId, reportedBy, description, hasPhoto } = req.body;
+      if (!companyId || !vehicleId || !reportedBy || !description) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const defect = await storage.createDefect({
+        companyId,
+        vehicleId,
+        reportedBy,
+        description,
+        category: "VEHICLE",
+        status: "OPEN",
+      });
+      
+      res.status(201).json(defect);
+    } catch (error) {
+      console.error("Failed to create defect:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Generate PDF for inspection
+  app.get("/api/inspections/:id/pdf", async (req, res) => {
+    try {
+      const inspection = await storage.getInspectionById(Number(req.params.id));
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+
+      const company = await storage.getCompanyById(inspection.companyId);
+      const vehicle = await storage.getVehicleById(inspection.vehicleId);
+      const driver = await storage.getUser(inspection.driverId);
+
+      if (!company || !vehicle || !driver) {
+        return res.status(404).json({ error: "Related data not found" });
+      }
+
+      const pdfData = {
+        id: inspection.id,
+        companyName: company.name,
+        vehicleVrm: vehicle.vrm,
+        vehicleMake: vehicle.make,
+        vehicleModel: vehicle.model,
+        driverName: driver.name,
+        type: inspection.type,
+        status: inspection.status,
+        odometer: inspection.odometer,
+        checklist: inspection.checklist as any[],
+        defects: inspection.defects as any[] | null,
+        hasTrailer: inspection.hasTrailer || false,
+        startedAt: inspection.startedAt?.toISOString() || null,
+        completedAt: inspection.completedAt?.toISOString() || null,
+        durationSeconds: inspection.durationSeconds,
+        createdAt: inspection.createdAt.toISOString(),
+      };
+
+      const filename = getInspectionFilename({
+        vehicleVrm: vehicle.vrm,
+        createdAt: inspection.createdAt.toISOString(),
+        type: inspection.type,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      const pdfStream = generateInspectionPDF(pdfData);
+      pdfStream.pipe(res);
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
+  // DVSA MOT lookup
+  app.get("/api/dvsa/mot/:registration", async (req, res) => {
+    try {
+      const motStatus = await dvsaService.getMotStatus(req.params.registration);
+      if (!motStatus) {
+        return res.status(404).json({ error: "Vehicle not found in DVSA database" });
+      }
+      res.json(motStatus);
+    } catch (error) {
+      console.error("DVSA lookup error:", error);
+      res.status(500).json({ error: "Failed to fetch MOT data" });
+    }
+  });
+
+  // DVSA full vehicle lookup
+  app.get("/api/dvsa/vehicle/:registration", async (req, res) => {
+    try {
+      const vehicle = await dvsaService.getVehicleByRegistration(req.params.registration);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      res.json(vehicle);
+    } catch (error) {
+      console.error("DVSA vehicle lookup error:", error);
+      res.status(500).json({ error: "Failed to fetch vehicle data" });
+    }
+  });
+
+  // ==================== MANAGER API ROUTES ====================
+
+  // Manager login
+  app.post("/api/manager/login", async (req, res) => {
+    try {
+      const { companyCode, pin, totpToken } = req.body;
+      if (!companyCode || !pin) {
+        return res.status(400).json({ error: "Missing company code or PIN" });
+      }
+
+      const company = await storage.getCompanyByCode(companyCode);
+      if (!company) {
+        return res.status(401).json({ error: "Invalid company code" });
+      }
+
+      const manager = await storage.getUserByCompanyAndPin(company.id, pin, "MANAGER");
+      if (!manager) {
+        return res.status(401).json({ error: "Invalid PIN" });
+      }
+
+      // Check if 2FA is enabled for this manager
+      if (manager.totpEnabled && manager.totpSecret) {
+        // If no TOTP token provided, indicate that 2FA is required
+        if (!totpToken) {
+          return res.json({ 
+            requiresTwoFactor: true, 
+            managerId: manager.id,
+            managerName: manager.name
+          });
+        }
+        
+        // Verify TOTP token
+        const { verifyTotpToken } = await import("./totpService");
+        const isValid = verifyTotpToken(totpToken, manager.totpSecret);
+        if (!isValid) {
+          return res.status(401).json({ error: "Invalid verification code" });
+        }
+      }
+
+      // Audit log: Manager login
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: company.id,
+        userId: manager.id,
+        action: 'LOGIN',
+        entity: 'SESSION',
+        details: { managerName: manager.name, with2FA: !!manager.totpEnabled },
+        req,
+      });
+
+      res.json({ manager, company });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Manager dashboard stats
+  app.get("/api/manager/stats/:companyId", async (req, res) => {
+    try {
+      const stats = await storage.getManagerDashboardStats(Number(req.params.companyId));
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // All inspections for manager
+  app.get("/api/manager/inspections/:companyId", async (req, res) => {
+    try {
+      const { limit = '50', offset = '0' } = req.query;
+      const inspectionList = await storage.getAllInspections(
+        Number(req.params.companyId),
+        Number(limit),
+        Number(offset)
+      );
+      res.json(inspectionList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get single inspection
+  app.get("/api/manager/inspection/:id", async (req, res) => {
+    try {
+      const inspection = await storage.getInspectionById(Number(req.params.id));
+      if (!inspection) {
+        return res.status(404).json({ error: "Inspection not found" });
+      }
+      res.json(inspection);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Defects
+  app.get("/api/manager/defects/:companyId", async (req, res) => {
+    try {
+      const defectList = await storage.getDefectsByCompany(Number(req.params.companyId));
+      res.json(defectList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/manager/defects", async (req, res) => {
+    try {
+      const validated = insertDefectSchema.parse(req.body);
+      const defect = await storage.createDefect(validated);
+      res.status(201).json(defect);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/manager/defects/:id", async (req, res) => {
+    try {
+      const defectId = Number(req.params.id);
+      const updated = await storage.updateDefect(defectId, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Defect not found" });
+      }
+      
+      // Audit log: Defect updated
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'DEFECT',
+        entityId: defectId,
+        details: { status: updated.status, changes: req.body },
+        req,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Trailers
+  app.get("/api/manager/trailers/:companyId", async (req, res) => {
+    try {
+      const trailerList = await storage.getTrailersByCompany(Number(req.params.companyId));
+      res.json(trailerList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/manager/trailers", async (req, res) => {
+    try {
+      const validated = insertTrailerSchema.parse(req.body);
+      const trailer = await storage.createTrailer(validated);
+      res.status(201).json(trailer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Vehicle CRUD for manager
+  app.patch("/api/manager/vehicles/:id", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const oldVehicle = await storage.getVehicleById(vehicleId);
+      const updated = await storage.updateVehicle(vehicleId, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      // Audit log: Vehicle updated
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'VEHICLE',
+        entityId: vehicleId,
+        details: { vrm: updated.vrm, changes: req.body },
+        req,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/manager/vehicles", async (req, res) => {
+    try {
+      const validated = insertVehicleSchema.parse(req.body);
+      
+      // Check vehicle usage limits before creating
+      const usage = await storage.getVehicleUsage(validated.companyId);
+      
+      if (usage.state === 'over_hard_limit') {
+        return res.status(403).json({ 
+          error: "Vehicle capacity exceeded — request upgrade to add more vehicles.",
+          usage 
+        });
+      }
+      
+      const vehicle = await storage.createVehicle(validated);
+      
+      // Audit log: Vehicle created
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: vehicle.companyId,
+        userId: req.body.managerId || null,
+        action: 'CREATE',
+        entity: 'VEHICLE',
+        entityId: vehicle.id,
+        details: { vrm: vehicle.vrm, make: vehicle.make, model: vehicle.model },
+        req,
+      });
+      
+      // Return with warning if at limit or in grace
+      if (usage.state === 'at_limit' || usage.state === 'in_grace') {
+        return res.status(201).json({ 
+          vehicle, 
+          warning: 'grace_active',
+          usage 
+        });
+      }
+      
+      res.status(201).json({ vehicle });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/manager/vehicles/:id", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const vehicle = await storage.getVehicleById(vehicleId);
+      
+      await storage.deleteVehicle(vehicleId);
+      
+      // Audit log: Vehicle deleted
+      if (vehicle) {
+        const { logAudit } = await import("./auditService");
+        await logAudit({
+          companyId: vehicle.companyId,
+          userId: req.body.managerId || null,
+          action: 'DELETE',
+          entity: 'VEHICLE',
+          entityId: vehicleId,
+          details: { vrm: vehicle.vrm },
+          req,
+        });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Fuel entries for manager
+  app.get("/api/manager/fuel/:companyId", async (req, res) => {
+    try {
+      const { days = '30' } = req.query;
+      const entries = await storage.getFuelEntriesByCompany(
+        Number(req.params.companyId),
+        Number(days)
+      );
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Users for manager
+  app.get("/api/manager/users/:companyId", async (req, res) => {
+    try {
+      const userList = await storage.getUsersByCompany(Number(req.params.companyId));
+      res.json(userList);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create user
+  app.post("/api/manager/users", async (req, res) => {
+    try {
+      const createUserSchema = z.object({
+        companyId: z.number(),
+        name: z.string().min(1),
+        email: z.string().email(),
+        role: z.enum(['DRIVER', 'MANAGER']),
+        pin: z.string().length(4).optional().nullable(),
+        managerId: z.number().optional(),
+      });
+      
+      const validated = createUserSchema.parse(req.body);
+      
+      // Verify manager belongs to this company
+      if (validated.managerId) {
+        const manager = await storage.getUser(validated.managerId);
+        if (!manager || manager.companyId !== validated.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to create users for this company" });
+        }
+      }
+      
+      const user = await storage.createUser({
+        companyId: validated.companyId,
+        name: validated.name,
+        email: validated.email,
+        role: validated.role,
+        pin: validated.pin || null,
+        active: true,
+      });
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: validated.companyId,
+        userId: validated.managerId || null,
+        action: 'CREATE',
+        entity: 'USER',
+        entityId: user.id,
+        details: { name: user.name, email: user.email, role: user.role },
+        req,
+      });
+      
+      res.status(201).json(user);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Failed to create user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update user
+  app.patch("/api/manager/users/:id", async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      
+      const updateUserSchema = z.object({
+        name: z.string().min(1).optional(),
+        email: z.string().email().optional(),
+        pin: z.string().length(4).optional().nullable(),
+        active: z.boolean().optional(),
+        managerId: z.number().optional(),
+        companyId: z.number().optional(),
+      });
+      
+      const validated = updateUserSchema.parse(req.body);
+      
+      // Get target user to verify company ownership
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Verify manager belongs to same company as target user
+      if (validated.managerId) {
+        const manager = await storage.getUser(validated.managerId);
+        if (!manager || manager.companyId !== targetUser.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to update users in this company" });
+        }
+      }
+      
+      // Build safe updates object (only allowed fields)
+      const updates: { name?: string; email?: string; pin?: string | null; active?: boolean } = {};
+      if (validated.name !== undefined) updates.name = validated.name;
+      if (validated.email !== undefined) updates.email = validated.email;
+      if (validated.pin !== undefined) updates.pin = validated.pin;
+      if (validated.active !== undefined) updates.active = validated.active;
+      
+      const updated = await storage.updateUser(userId, updates);
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: validated.managerId || null,
+        action: 'UPDATE',
+        entity: 'USER',
+        entityId: userId,
+        details: { name: updated.name, changes: updates },
+        req,
+      });
+      
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      console.error("Failed to update user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Deactivate user (soft delete)
+  app.delete("/api/manager/users/:id", async (req, res) => {
+    try {
+      const userId = Number(req.params.id);
+      const { managerId, companyId } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Verify manager belongs to same company and has permission
+      if (managerId) {
+        const manager = await storage.getUser(managerId);
+        if (!manager || manager.companyId !== user.companyId || manager.role !== 'MANAGER') {
+          return res.status(403).json({ error: "Unauthorized to deactivate users in this company" });
+        }
+        // Prevent self-deactivation
+        if (managerId === userId) {
+          return res.status(400).json({ error: "Cannot deactivate your own account" });
+        }
+      }
+      
+      await storage.updateUser(userId, { active: false });
+      
+      // Audit log
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: managerId || null,
+        action: 'DELETE',
+        entity: 'USER',
+        entityId: userId,
+        details: { name: user.name, email: user.email },
+        req,
+      });
+      
+      res.status(200).json({ success: true, message: "User deactivated" });
+    } catch (error) {
+      console.error("Failed to deactivate user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== AUDIT LOG API ROUTES ====================
+
+  // Get audit logs for company
+  app.get("/api/manager/audit-logs/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { limit = '50', offset = '0', entity, action } = req.query;
+      
+      const options = {
+        limit: Number(limit),
+        offset: Number(offset),
+        entity: entity as string | undefined,
+        action: action as string | undefined,
+      };
+      
+      const [logs, total] = await Promise.all([
+        storage.getAuditLogs(companyId, options),
+        storage.getAuditLogCount(companyId, { entity: options.entity, action: options.action }),
+      ]);
+      
+      // Fetch user details for each log
+      const logsWithUsers = await Promise.all(
+        logs.map(async (log) => {
+          let userName = 'System';
+          if (log.userId) {
+            const user = await storage.getUser(log.userId);
+            userName = user?.name || 'Unknown';
+          }
+          return { ...log, userName };
+        })
+      );
+      
+      res.json({ logs: logsWithUsers, total, limit: options.limit, offset: options.offset });
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Export audit logs as CSV
+  app.get("/api/manager/audit-logs/:companyId/export", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { entity, action } = req.query;
+      
+      const logs = await storage.getAuditLogs(companyId, {
+        limit: 10000,
+        entity: entity as string | undefined,
+        action: action as string | undefined,
+      });
+      
+      // Fetch user details
+      const logsWithUsers = await Promise.all(
+        logs.map(async (log) => {
+          let userName = 'System';
+          if (log.userId) {
+            const user = await storage.getUser(log.userId);
+            userName = user?.name || 'Unknown';
+          }
+          return { ...log, userName };
+        })
+      );
+      
+      // Generate CSV
+      const csvHeaders = 'Timestamp,User,Action,Entity,Entity ID,Details,IP Address\n';
+      const csvRows = logsWithUsers.map(log => {
+        const details = log.details ? JSON.stringify(log.details).replace(/"/g, '""') : '';
+        return `"${log.createdAt.toISOString()}","${log.userName}","${log.action}","${log.entity}","${log.entityId || ''}","${details}","${log.ipAddress || ''}"`;
+      }).join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=audit-log-${new Date().toISOString().split('T')[0]}.csv`);
+      res.send(csvHeaders + csvRows);
+    } catch (error) {
+      console.error("Error exporting audit logs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== 2FA/TOTP API ROUTES ====================
+
+  // Generate TOTP setup (QR code and secret)
+  app.post("/api/manager/2fa/setup/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      if (user.role !== 'MANAGER') {
+        return res.status(403).json({ error: "2FA is only available for managers" });
+      }
+      
+      const { generateTotpSetup } = await import("./totpService");
+      const setup = await generateTotpSetup(user.email);
+      
+      // Store the secret temporarily (user must verify before enabling)
+      await storage.updateUser(userId, { totpSecret: setup.secret, totpEnabled: false });
+      
+      res.json({
+        qrCodeDataUrl: setup.qrCodeDataUrl,
+        secret: setup.secret // For manual entry fallback
+      });
+    } catch (error) {
+      console.error("Error generating 2FA setup:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Verify and enable 2FA
+  app.post("/api/manager/2fa/enable/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Verification token required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user || !user.totpSecret) {
+        return res.status(400).json({ error: "2FA setup not initiated" });
+      }
+      
+      const { verifyTotpToken } = await import("./totpService");
+      const isValid = verifyTotpToken(token, user.totpSecret);
+      
+      if (!isValid) {
+        return res.status(400).json({ error: "Invalid verification code" });
+      }
+      
+      await storage.updateUser(userId, { totpEnabled: true });
+      
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: user.id,
+        action: 'UPDATE',
+        entity: 'SETTINGS',
+        details: { action: '2FA enabled' },
+        req
+      });
+      
+      res.json({ success: true, message: "Two-factor authentication enabled" });
+    } catch (error) {
+      console.error("Error enabling 2FA:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Disable 2FA
+  app.post("/api/manager/2fa/disable/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const { token } = req.body;
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Require valid TOTP token to disable
+      if (user.totpEnabled && user.totpSecret) {
+        const { verifyTotpToken } = await import("./totpService");
+        const isValid = verifyTotpToken(token, user.totpSecret);
+        if (!isValid) {
+          return res.status(400).json({ error: "Invalid verification code" });
+        }
+      }
+      
+      await storage.updateUser(userId, { totpSecret: null, totpEnabled: false });
+      
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: user.companyId,
+        userId: user.id,
+        action: 'UPDATE',
+        entity: 'SETTINGS',
+        details: { action: '2FA disabled' },
+        req
+      });
+      
+      res.json({ success: true, message: "Two-factor authentication disabled" });
+    } catch (error) {
+      console.error("Error disabling 2FA:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get 2FA status for user
+  app.get("/api/manager/2fa/status/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      res.json({
+        enabled: user.totpEnabled || false,
+        hasSecret: !!user.totpSecret
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== LICENSE API ROUTES ====================
+
+  // Get license info and vehicle usage
+  app.get("/api/company/license/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const company = await storage.getCompanyById(companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      const usage = await storage.getVehicleUsage(companyId);
+      
+      res.json({
+        tier: company.licenseTier,
+        tierDisplay: company.licenseTier === 'core' ? 'Core' : company.licenseTier === 'pro' ? 'Pro' : 'Operator',
+        ...usage
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Request license upgrade
+  app.post("/api/company/license/request-upgrade", async (req, res) => {
+    try {
+      const validated = insertLicenseUpgradeRequestSchema.parse(req.body);
+      const request = await storage.createLicenseUpgradeRequest(validated);
+      res.status(201).json(request);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== DOCUMENT API ROUTES ====================
+
+  // Get all documents for company (manager)
+  app.get("/api/manager/documents/:companyId", async (req, res) => {
+    try {
+      const docs = await storage.getDocumentsByCompany(Number(req.params.companyId));
+      res.json(docs);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create document (manager)
+  app.post("/api/manager/documents", async (req, res) => {
+    try {
+      const validated = insertDocumentSchema.parse(req.body);
+      const doc = await storage.createDocument(validated);
+      res.status(201).json(doc);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update document (manager)
+  app.patch("/api/manager/documents/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateDocument(Number(req.params.id), req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete document (manager)
+  app.delete("/api/manager/documents/:id", async (req, res) => {
+    try {
+      await storage.deleteDocument(Number(req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get document acknowledgments (manager)
+  app.get("/api/manager/documents/:id/acknowledgments", async (req, res) => {
+    try {
+      const acks = await storage.getDocumentAcknowledgments(Number(req.params.id));
+      res.json(acks);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get unread documents for driver
+  app.get("/api/documents/unread", async (req, res) => {
+    try {
+      const { companyId, userId } = req.query;
+      if (!companyId || !userId) {
+        return res.status(400).json({ error: "Missing companyId or userId" });
+      }
+      const unreadDocs = await storage.getUnreadDocuments(Number(companyId), Number(userId));
+      res.json(unreadDocs);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Acknowledge document (driver)
+  app.post("/api/documents/:id/acknowledge", async (req, res) => {
+    try {
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ error: "Missing userId" });
+      }
+      const ack = await storage.acknowledgeDocument(Number(req.params.id), Number(userId));
+      res.status(201).json(ack);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== GOOGLE DRIVE SETTINGS ====================
+  
+  // Update Google Drive settings for company
+  app.patch("/api/manager/company/:companyId/gdrive", async (req, res) => {
+    try {
+      const { clientId, clientSecret, refreshToken, folderId, disconnect } = req.body;
+      const companyId = Number(req.params.companyId);
+      
+      if (disconnect) {
+        const updated = await storage.updateCompany(companyId, {
+          googleDriveConnected: false,
+          driveClientId: null,
+          driveClientSecret: null,
+          driveRefreshToken: null,
+          driveRootFolderId: null,
+        });
+        return res.json(updated);
+      }
+      
+      if (!clientId || !clientSecret || !refreshToken) {
+        return res.status(400).json({ error: "Missing Google credentials" });
+      }
+      
+      // Encrypt all credentials before storing
+      const { encrypt } = await import("./encryption");
+      
+      const updated = await storage.updateCompany(companyId, {
+        googleDriveConnected: true,
+        driveClientId: encrypt(clientId),
+        driveClientSecret: encrypt(clientSecret),
+        driveRefreshToken: encrypt(refreshToken),
+        driveRootFolderId: folderId || null,
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Test Google Drive connection
+  app.post("/api/manager/company/:companyId/gdrive/test", async (req, res) => {
+    try {
+      const { clientId, clientSecret, refreshToken } = req.body;
+      
+      if (!clientId || !clientSecret || !refreshToken) {
+        return res.status(400).json({ error: "Missing Google credentials" });
+      }
+      
+      const { googleDriveService } = await import("./googleDriveService");
+      const result = await googleDriveService.testConnection(clientId, clientSecret, refreshToken);
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== LOGO UPLOAD ====================
+
+  // Get presigned URL for logo upload
+  app.post("/api/manager/company/:companyId/logo/upload", async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const uploadURL = await objectStorage.getLogoUploadURL(Number(req.params.companyId));
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting logo upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Save uploaded logo URL to company
+  app.patch("/api/manager/company/:companyId/logo", async (req, res) => {
+    try {
+      const { logoURL } = req.body;
+      const companyId = Number(req.params.companyId);
+      
+      if (!logoURL) {
+        return res.status(400).json({ error: "Missing logoURL" });
+      }
+      
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const normalizedPath = objectStorage.normalizeLogoPath(logoURL);
+      
+      const updated = await storage.updateCompany(companyId, {
+        logoUrl: normalizedPath,
+      });
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error saving logo:", error);
+      res.status(500).json({ error: "Failed to save logo" });
+    }
+  });
+
+  // ==================== DOCUMENT UPLOAD ====================
+
+  // Get presigned URL for document upload
+  app.post("/api/manager/documents/upload-url", async (req, res) => {
+    try {
+      const { companyId, filename } = req.body;
+      if (!companyId || !filename) {
+        return res.status(400).json({ error: "Missing companyId or filename" });
+      }
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const result = await objectStorage.getDocumentUploadURL(Number(companyId), filename);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting document upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Serve uploaded objects (logos, etc.)
+  app.get("/objects/*", async (req, res) => {
+    try {
+      const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
+      const objectStorage = new ObjectStorageService();
+      const objectFile = await objectStorage.getObjectFile(req.path);
+      objectStorage.downloadObject(objectFile, res);
+    } catch (error) {
+      if ((error as any).name === "ObjectNotFoundError") {
+        return res.status(404).json({ error: "Object not found" });
+      }
+      console.error("Error serving object:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  return httpServer;
+}
