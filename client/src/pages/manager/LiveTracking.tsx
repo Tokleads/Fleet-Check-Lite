@@ -127,57 +127,64 @@ export default function LiveTracking() {
 
   // Update markers when locations change
   useEffect(() => {
-    if (!map || !locations) return;
+    if (!map || !locations || locations.length === 0) return;
 
     const newMarkers = new Map<number, google.maps.Marker>();
 
-    locations.forEach((location) => {
-      const position = {
-        lat: parseFloat(location.latitude),
-        lng: parseFloat(location.longitude)
-      };
-
-      // Determine marker color based on status
-      const isStagnant = location.isStagnant;
-      const markerColor = isStagnant ? '#ef4444' : '#00a3ff';
-
-      const marker = new google.maps.Marker({
-        position,
-        map,
-        title: location.driver?.name || `Driver ${location.driverId}`,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: markerColor,
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2
-        }
-      });
-
-      // Info window
-      const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div style="color: #0f172a; padding: 8px;">
-            <h3 style="font-weight: bold; margin-bottom: 4px;">${location.driver?.name || 'Unknown Driver'}</h3>
-            <p style="margin: 2px 0;">Speed: ${location.speed} km/h</p>
-            <p style="margin: 2px 0;">Last Update: ${new Date(location.timestamp).toLocaleTimeString()}</p>
-            ${isStagnant ? '<p style="color: #ef4444; font-weight: bold;">⚠️ STAGNANT</p>' : ''}
-          </div>
-        `
-      });
-
-      marker.addListener('click', () => {
-        infoWindow.open(map, marker);
-      });
-
-      newMarkers.set(location.driverId, marker);
+    // First, remove all old markers safely
+    markers.forEach((marker) => {
+      try {
+        marker.setMap(null);
+      } catch (error) {
+        console.warn('Error removing marker:', error);
+      }
     });
 
-    // Remove old markers
-    markers.forEach((marker, driverId) => {
-      if (!newMarkers.has(driverId)) {
-        marker.setMap(null);
+    // Then create new markers
+    locations.forEach((location) => {
+      try {
+        const position = {
+          lat: parseFloat(location.latitude),
+          lng: parseFloat(location.longitude)
+        };
+
+        // Determine marker color based on status
+        const isStagnant = location.isStagnant;
+        const markerColor = isStagnant ? '#ef4444' : '#00a3ff';
+
+        const marker = new google.maps.Marker({
+          position,
+          map,
+          title: location.driver?.name || `Driver ${location.driverId}`,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: markerColor,
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          }
+        });
+
+        // Info window
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="color: #0f172a; padding: 8px;">
+              <h3 style="font-weight: bold; margin-bottom: 4px;">${location.driver?.name || 'Unknown Driver'}</h3>
+              <p style="margin: 2px 0;">Speed: ${location.speed} km/h</p>
+              <p style="margin: 2px 0;">Last Update: ${new Date(location.timestamp).toLocaleTimeString()}</p>
+              ${isStagnant ? '<p style="color: #ef4444; font-weight: bold;">⚠️ STAGNANT</p>' : ''}
+            </div>
+          `
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open(map, marker);
+        });
+
+        newMarkers.set(location.driverId, marker);
+      } catch (error) {
+        console.error('Error creating marker for driver', location.driverId, error);
       }
     });
 
@@ -185,14 +192,18 @@ export default function LiveTracking() {
 
     // Auto-center map on first load
     if (locations.length > 0 && markers.size === 0) {
-      const bounds = new google.maps.LatLngBounds();
-      locations.forEach(loc => {
-        bounds.extend({
-          lat: parseFloat(loc.latitude),
-          lng: parseFloat(loc.longitude)
+      try {
+        const bounds = new google.maps.LatLngBounds();
+        locations.forEach(loc => {
+          bounds.extend({
+            lat: parseFloat(loc.latitude),
+            lng: parseFloat(loc.longitude)
+          });
         });
-      });
-      map.fitBounds(bounds);
+        map.fitBounds(bounds);
+      } catch (error) {
+        console.warn('Error fitting bounds:', error);
+      }
     }
   }, [map, locations]);
 

@@ -661,29 +661,46 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getLatestDriverLocations(companyId: number): Promise<(DriverLocation & { driver?: User })[]> {
-    // Get the latest location for each driver
-    const latestLocations = await db
-      .select()
-      .from(driverLocations)
-      .where(eq(driverLocations.companyId, companyId))
-      .orderBy(desc(driverLocations.timestamp));
-    
-    // Group by driver and get only the most recent
-    const locationMap = new Map<number, DriverLocation>();
-    for (const loc of latestLocations) {
-      if (!locationMap.has(loc.driverId)) {
-        locationMap.set(loc.driverId, loc);
+    try {
+      // Get the latest location for each driver
+      const latestLocations = await db
+        .select()
+        .from(driverLocations)
+        .where(eq(driverLocations.companyId, companyId))
+        .orderBy(desc(driverLocations.timestamp));
+      
+      // If no locations found, return empty array
+      if (!latestLocations || latestLocations.length === 0) {
+        return [];
       }
+      
+      // Group by driver and get only the most recent
+      const locationMap = new Map<number, DriverLocation>();
+      for (const loc of latestLocations) {
+        if (!locationMap.has(loc.driverId)) {
+          locationMap.set(loc.driverId, loc);
+        }
+      }
+      
+      // Fetch driver info
+      const result = [];
+      for (const location of locationMap.values()) {
+        try {
+          const driver = await this.getUser(location.driverId);
+          result.push({ ...location, driver });
+        } catch (error) {
+          // If driver not found, include location without driver info
+          console.warn(`Driver ${location.driverId} not found for location`);
+          result.push({ ...location, driver: undefined });
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("Error in getLatestDriverLocations:", error);
+      // Return empty array instead of throwing to prevent crashes
+      return [];
     }
-    
-    // Fetch driver info
-    const result = [];
-    for (const location of locationMap.values()) {
-      const driver = await this.getUser(location.driverId);
-      result.push({ ...location, driver });
-    }
-    
-    return result;
   }
   
   async checkStagnation(driverId: number, companyId: number): Promise<void> {
