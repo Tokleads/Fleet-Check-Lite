@@ -2497,5 +2497,191 @@ export async function registerRoutes(
     }
   });
   
+  // ============================================
+  // Fleet Hierarchy Management
+  // ============================================
+  
+  // Vehicle Categories
+  app.get("/api/manager/hierarchy/categories", async (req, res) => {
+    try {
+      const companyId = parseInt(req.query.companyId as string);
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+      const { getVehicleCategories } = await import("./hierarchyService");
+      const categories = await getVehicleCategories(companyId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ error: "Failed to fetch categories" });
+    }
+  });
+  
+  app.post("/api/manager/hierarchy/categories", async (req, res) => {
+    try {
+      const { createVehicleCategory } = await import("./hierarchyService");
+      const category = await createVehicleCategory(req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ error: "Failed to create category" });
+    }
+  });
+  
+  app.put("/api/manager/hierarchy/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { updateVehicleCategory } = await import("./hierarchyService");
+      const category = await updateVehicleCategory(id, req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ error: "Failed to update category" });
+    }
+  });
+  
+  app.delete("/api/manager/hierarchy/categories/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { deleteVehicleCategory } = await import("./hierarchyService");
+      await deleteVehicleCategory(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ error: "Failed to delete category" });
+    }
+  });
+  
+  // Cost Centres
+  app.get("/api/manager/hierarchy/cost-centres", async (req, res) => {
+    try {
+      const companyId = parseInt(req.query.companyId as string);
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+      const { getCostCentres } = await import("./hierarchyService");
+      const costCentres = await getCostCentres(companyId);
+      res.json(costCentres);
+    } catch (error) {
+      console.error("Error fetching cost centres:", error);
+      res.status(500).json({ error: "Failed to fetch cost centres" });
+    }
+  });
+  
+  app.post("/api/manager/hierarchy/cost-centres", async (req, res) => {
+    try {
+      const { createCostCentre } = await import("./hierarchyService");
+      const costCentre = await createCostCentre(req.body);
+      res.json(costCentre);
+    } catch (error) {
+      console.error("Error creating cost centre:", error);
+      res.status(500).json({ error: "Failed to create cost centre" });
+    }
+  });
+  
+  app.put("/api/manager/hierarchy/cost-centres/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { updateCostCentre } = await import("./hierarchyService");
+      const costCentre = await updateCostCentre(id, req.body);
+      res.json(costCentre);
+    } catch (error) {
+      console.error("Error updating cost centre:", error);
+      res.status(500).json({ error: "Failed to update cost centre" });
+    }
+  });
+  
+  app.delete("/api/manager/hierarchy/cost-centres/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { deleteCostCentre } = await import("./hierarchyService");
+      await deleteCostCentre(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting cost centre:", error);
+      res.status(500).json({ error: "Failed to delete cost centre" });
+    }
+  });
+  
+  // Departments
+  app.get("/api/manager/hierarchy/departments", async (req, res) => {
+    try {
+      const companyId = parseInt(req.query.companyId as string);
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+      const { getDepartments } = await import("./hierarchyService");
+      const departments = await getDepartments(companyId);
+      res.json(departments);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  });
+  
+  app.post("/api/manager/hierarchy/departments", async (req, res) => {
+    try {
+      const { createDepartment } = await import("./hierarchyService");
+      const department = await createDepartment(req.body);
+      res.json(department);
+    } catch (error) {
+      console.error("Error creating department:", error);
+      res.status(500).json({ error: "Failed to create department" });
+    }
+  });
+  
+  app.put("/api/manager/hierarchy/departments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { updateDepartment } = await import("./hierarchyService");
+      const department = await updateDepartment(id, req.body);
+      res.json(department);
+    } catch (error) {
+      console.error("Error updating department:", error);
+      res.status(500).json({ error: "Failed to update department" });
+    }
+  });
+  
+  app.delete("/api/manager/hierarchy/departments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { deleteDepartment } = await import("./hierarchyService");
+      await deleteDepartment(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting department:", error);
+      res.status(500).json({ error: "Failed to delete department" });
+    }
+  });
+  
+  // Assign vehicle hierarchy
+  app.put("/api/manager/vehicles/:id/hierarchy", async (req, res) => {
+    try {
+      const vehicleId = parseInt(req.params.id);
+      const { assignVehicleHierarchy } = await import("./hierarchyService");
+      const vehicle = await assignVehicleHierarchy(vehicleId, req.body);
+      res.json(vehicle);
+    } catch (error) {
+      console.error("Error assigning hierarchy:", error);
+      res.status(500).json({ error: "Failed to assign hierarchy" });
+    }
+  });
+  
+  // Get hierarchy statistics
+  app.get("/api/manager/hierarchy/stats", async (req, res) => {
+    try {
+      const companyId = parseInt(req.query.companyId as string);
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+      const { getHierarchyStats } = await import("./hierarchyService");
+      const stats = await getHierarchyStats(companyId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching hierarchy stats:", error);
+      res.status(500).json({ error: "Failed to fetch hierarchy stats" });
+    }
+  });
+  
   return httpServer;
 }

@@ -98,6 +98,11 @@ export const vehicles = pgTable("vehicles", {
   nextServiceDue: timestamp("next_service_due"), // Calculated next service date
   nextServiceMileage: integer("next_service_mileage"), // Calculated next service mileage
   
+  // Fleet Hierarchy
+  categoryId: integer("category_id").references(() => vehicleCategories.id),
+  costCentreId: integer("cost_centre_id").references(() => costCentres.id),
+  departmentId: integer("department_id").references(() => departments.id),
+  
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
@@ -741,3 +746,57 @@ export const licenseAlerts = pgTable("license_alerts", {
 export const insertLicenseAlertSchema = createInsertSchema(licenseAlerts).omit({ id: true, createdAt: true, updatedAt: true });
 export type LicenseAlert = typeof licenseAlerts.$inferSelect;
 export type InsertLicenseAlert = z.infer<typeof insertLicenseAlertSchema>;
+
+
+// Fleet Hierarchy - Categories
+export const vehicleCategories = pgTable("vehicle_categories", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "HGV", "LGV", "Van", "Car"
+  description: text("description"),
+  color: varchar("color", { length: 7 }).default("#3b82f6"), // Hex color for UI
+  icon: varchar("icon", { length: 50 }).default("truck"), // Lucide icon name
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const insertVehicleCategorySchema = createInsertSchema(vehicleCategories).omit({ id: true, createdAt: true, updatedAt: true });
+export type VehicleCategory = typeof vehicleCategories.$inferSelect;
+export type InsertVehicleCategory = z.infer<typeof insertVehicleCategorySchema>;
+
+// Fleet Hierarchy - Cost Centres
+export const costCentres = pgTable("cost_centres", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  code: varchar("code", { length: 50 }).notNull(), // e.g., "LON-001", "MAN-002"
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "London Depot", "Manchester Warehouse"
+  description: text("description"),
+  location: text("location"), // Address or location description
+  managerName: varchar("manager_name", { length: 100 }),
+  managerEmail: varchar("manager_email", { length: 255 }),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const insertCostCentreSchema = createInsertSchema(costCentres).omit({ id: true, createdAt: true, updatedAt: true });
+export type CostCentre = typeof costCentres.$inferSelect;
+export type InsertCostCentre = z.infer<typeof insertCostCentreSchema>;
+
+// Fleet Hierarchy - Departments
+export const departments = pgTable("departments", {
+  id: serial("id").primaryKey(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  name: varchar("name", { length: 100 }).notNull(), // e.g., "Sales", "Delivery", "Maintenance"
+  description: text("description"),
+  headOfDepartment: varchar("head_of_department", { length: 100 }),
+  budgetCode: varchar("budget_code", { length: 50 }),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export const insertDepartmentSchema = createInsertSchema(departments).omit({ id: true, createdAt: true, updatedAt: true });
+export type Department = typeof departments.$inferSelect;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;

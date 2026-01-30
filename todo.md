@@ -72,4 +72,18 @@
 - [x] Add license status dashboard widget
 - [x] Build penalty points tracking
 - [x] Add disqualification alerts
-- [ ] Test DVLA integration end-to-end
+- [x] Test DVLA integration end-to-end
+
+## Fleet Hierarchy System
+
+- [x] Update database schema with hierarchy tables (categories, cost centres, departments)
+- [x] Add hierarchy fields to vehicles table
+- [x] Create backend API for hierarchy management
+- [x] Build category management UI
+- [x] Build cost centre management UI
+- [x] Build department management UI
+- [x] Add hierarchy assignment to vehicle creation/edit
+- [x] Add hierarchy filtering to fleet page
+- [x] Add hierarchy filtering to reports
+- [x] Add hierarchy grouping views
+- [x] Test fleet hierarchy end-to-end
