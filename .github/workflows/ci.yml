@@ -182,21 +182,7 @@ jobs:
       
       - name: Deploy to Replit (Production)
         run: |
-          echo "Deploying to production environment..."
-          # Add Replit deployment commands here
-          echo "Production deployment complete"
-      
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: Release v${{ github.run_number }}
-          body: |
-            Automated release from CI/CD pipeline
-            
-            Changes in this release:
-            ${{ github.event.head_commit.message }}
-          draft: false
-          prerelease: false
+          echo "✅ Build artifacts ready for deployment"
+          echo "📦 Deployment to Replit should be triggered via Replit's GitHub integration"
+          echo "🔗 Or manually deploy from Replit dashboard"
+          echo "Production build complete!"
