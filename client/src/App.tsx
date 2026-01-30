@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { BrandProvider } from "@/hooks/use-brand";
 import Landing from "@/pages/Landing";
+import TitanFleetLandingPage from "@/pages/TitanFleetLanding";
 import DriverDashboard from "@/pages/driver/DriverDashboard";
 import VehicleDetail from "@/pages/driver/VehicleDetail";
 import VehicleInspection from "@/pages/driver/VehicleInspection";
@@ -39,7 +40,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Landing} />
+      <Route path="/" component={TitanFleetLandingPage} />
+      <Route path="/app" component={Landing} />
       <Route path="/driver" component={DriverDashboard} />
       <Route path="/driver/vehicle/:id" component={VehicleDetail} />
       <Route path="/driver/inspection/:id" component={VehicleInspection} />
