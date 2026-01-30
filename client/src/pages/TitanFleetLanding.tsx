@@ -400,8 +400,11 @@ export default function TitanFleetLandingPage() {
                 <p className="text-sm text-slate-500">1-5 Vehicles</p>
               </div>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-slate-900">£49</span>
+                <span className="text-4xl font-bold text-slate-900">{isMonthly ? "£49" : "£44"}</span>
                 <span className="text-slate-600">/month</span>
+                {!isMonthly && (
+                  <p className="text-xs text-green-600 mt-1">Save 10% (£529/year)</p>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 {[
@@ -441,8 +444,11 @@ export default function TitanFleetLandingPage() {
                 <p className="text-sm text-blue-200">6-30 Vehicles</p>
               </div>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-white">£149</span>
+                <span className="text-4xl font-bold text-white">{isMonthly ? "£149" : "£134"}</span>
                 <span className="text-blue-200">/month</span>
+                {!isMonthly && (
+                  <p className="text-xs text-blue-100 mt-1">Save 10% (£1,609/year)</p>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 {[
@@ -479,8 +485,11 @@ export default function TitanFleetLandingPage() {
                 <p className="text-sm text-slate-500">Up to 100 Vehicles</p>
               </div>
               <div className="mb-6">
-                <span className="text-4xl font-bold text-slate-900">£349</span>
+                <span className="text-4xl font-bold text-slate-900">{isMonthly ? "£349" : "£314"}</span>
                 <span className="text-slate-600">/month</span>
+                {!isMonthly && (
+                  <p className="text-xs text-green-600 mt-1">Save 10% (£3,769/year)</p>
+                )}
               </div>
               <ul className="space-y-3 mb-8">
                 {[
