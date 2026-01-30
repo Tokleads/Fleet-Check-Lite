@@ -97,3 +97,55 @@
 - [x] Fix TypeScript error: Property 'where' does not exist in reports.ts
 - [x] Fix TypeScript error: Property 'get' does not exist on storage in Reports.tsx
 - [x] Fix TypeScript error: Module 'wouter' has no exported member 'useNavigate' in LicenseAlertsWidget.tsx
+
+## User Roles & Permissions System
+
+- [x] Update database schema with role-based permissions
+- [x] Create permission checking middleware
+- [ ] Build role management API endpoints
+- [ ] Add admin-only routes protection
+- [ ] Build role assignment UI for admins
+- [ ] Add permission checks to frontend components
+- [ ] Create role-based navigation menus
+- [ ] Test role-based access control end-to-end
+
+## Notification System
+
+- [x] Update database schema with notification preferences
+- [x] Create notification service infrastructure
+- [x] Build email notification templates
+- [x] Implement MOT expiry notifications
+- [x] Implement Tax expiry notifications
+- [x] Implement Service due notifications
+- [x] Implement DVLA license expiry notifications
+- [x] Implement VOR status notifications
+- [ ] Build notification preferences UI
+- [ ] Add notification history page
+- [ ] Test notification delivery end-to-end
+
+## Document Management System
+
+- [ ] Update database schema with document tables
+- [ ] Create document upload API endpoints
+- [ ] Build document storage integration (S3/Drive)
+- [ ] Implement vehicle document upload
+- [ ] Implement driver document upload
+- [ ] Add document expiry tracking
+- [ ] Build document list UI
+- [ ] Add document download functionality
+- [ ] Create document expiry alerts
+- [ ] Add document categories (Insurance, V5C, License, CPC, etc.)
+- [ ] Test document management end-to-end
+
+## Advanced Dashboard
+
+- [ ] Create enhanced KPI cards with trends
+- [ ] Build fleet overview chart (vehicles by status)
+- [ ] Add cost analysis chart (fuel vs service costs)
+- [ ] Create compliance status chart (MOT, Tax, Service)
+- [ ] Build driver activity chart
+- [ ] Add defect trend analysis
+- [ ] Create quick action buttons
+- [ ] Add recent activity feed
+- [ ] Implement dashboard filters (date range, vehicle category)
+- [ ] Test advanced dashboard end-to-end
