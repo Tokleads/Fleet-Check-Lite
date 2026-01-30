@@ -5,6 +5,7 @@ import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
 import { TitanInput } from "@/components/titan-ui/Input";
 import { DocumentsPopup } from "@/components/driver/DocumentsPopup";
+import { GPSTrackingStatus } from "@/components/driver/GPSTrackingStatus";
 import { Search, Clock, ChevronRight, AlertTriangle, Truck, Plus, History, WifiOff, Fuel, AlertOctagon } from "lucide-react";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
@@ -99,6 +100,14 @@ export default function DriverDashboard() {
             <h1 className="titan-title">Driver Home</h1>
             <p className="titan-helper">Ready to start your shift?</p>
         </div>
+
+        {/* GPS Tracking Status */}
+        {user?.id && (
+          <GPSTrackingStatus 
+            driverId={user.id} 
+            autoStart={true}
+          />
+        )}
 
         {/* Primary Workflow: Search Vehicle */}
         <section>

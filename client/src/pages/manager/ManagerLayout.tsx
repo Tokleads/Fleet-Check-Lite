@@ -15,13 +15,21 @@ import {
   FileText,
   User,
   Shield,
-  ClipboardList
+  ClipboardList,
+  MapPin,
+  Clock,
+  Radio,
+  Navigation
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
 
 const navItems = [
   { path: "/manager", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/manager/live-tracking", icon: Navigation, label: "Live Tracking" },
+  { path: "/manager/timesheets", icon: Clock, label: "Timesheets" },
+  { path: "/manager/titan-command", icon: Radio, label: "Titan Command" },
+  { path: "/manager/geofences", icon: MapPin, label: "Geofences" },
   { path: "/manager/inspections", icon: ClipboardCheck, label: "Inspections" },
   { path: "/manager/defects", icon: AlertTriangle, label: "Defects" },
   { path: "/manager/fuel", icon: Fuel, label: "Fuel Log" },

@@ -133,3 +133,219 @@ export function getInspectionFilename(inspection: { vehicleVrm: string; createdA
   const timeStr = date.toTimeString().split(' ')[0].replace(/:/g, '');
   return `${inspection.vehicleVrm}_${inspection.type}_${dateStr}_${timeStr}.pdf`;
 }
+
+/**
+ * Generate DVSA Compliance Report
+ */
+export function generateDVSAComplianceReport(data: {
+  companyName: string;
+  startDate: Date;
+  endDate: Date;
+  totalVehicles: number;
+  totalInspections: number;
+  totalDefects: number;
+  openDefects: number;
+  criticalDefects: number;
+  defectsBySeverity: { critical: number; major: number; minor: number };
+  defectsByStatus: { open: number; assigned: number; inProgress: number; rectified: number; verified: number; closed: number };
+  vehicleSummary: Array<{ vrm: string; make: string; model: string; inspections: number; defects: number; openDefects: number }>;
+}): PassThrough {
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  const stream = new PassThrough();
+  doc.pipe(stream);
+
+  // Header
+  doc.fontSize(20).font('Helvetica-Bold').text('DVSA Compliance Report', { align: 'center' });
+  doc.moveDown();
+
+  // Company & Period Info
+  doc.fontSize(12).font('Helvetica');
+  doc.text(`Company: ${data.companyName}`);
+  doc.text(`Report Period: ${data.startDate.toLocaleDateString('en-GB')} - ${data.endDate.toLocaleDateString('en-GB')}`);
+  doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`);
+  doc.moveDown();
+
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+  doc.moveDown();
+
+  // Summary Statistics
+  doc.fontSize(14).font('Helvetica-Bold').text('Summary Statistics');
+  doc.fontSize(11).font('Helvetica');
+  doc.text(`Total Vehicles: ${data.totalVehicles}`);
+  doc.text(`Total Inspections: ${data.totalInspections}`);
+  doc.text(`Total Defects: ${data.totalDefects}`);
+  doc.text(`Open Defects: ${data.openDefects}`);
+  doc.text(`Critical Defects: ${data.criticalDefects}`);
+  doc.moveDown();
+
+  // Compliance Rate
+  const inspectionRate = data.totalVehicles > 0 
+    ? ((data.totalInspections / data.totalVehicles) * 100).toFixed(1)
+    : '0';
+  
+  doc.fontSize(14).font('Helvetica-Bold').text('Compliance Metrics');
+  doc.fontSize(11).font('Helvetica');
+  doc.text(`Inspection Rate: ${inspectionRate}%`);
+  doc.moveDown();
+
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+  doc.moveDown();
+
+  // Defect Breakdown
+  doc.fontSize(14).font('Helvetica-Bold').text('Defect Breakdown by Severity');
+  doc.fontSize(11).font('Helvetica');
+  doc.text(`Critical: ${data.defectsBySeverity.critical}`);
+  doc.text(`Major: ${data.defectsBySeverity.major}`);
+  doc.text(`Minor: ${data.defectsBySeverity.minor}`);
+  doc.moveDown();
+
+  doc.fontSize(14).font('Helvetica-Bold').text('Defect Status');
+  doc.fontSize(11).font('Helvetica');
+  doc.text(`Open: ${data.defectsByStatus.open}`);
+  doc.text(`Assigned: ${data.defectsByStatus.assigned}`);
+  doc.text(`In Progress: ${data.defectsByStatus.inProgress}`);
+  doc.text(`Rectified: ${data.defectsByStatus.rectified}`);
+  doc.text(`Verified: ${data.defectsByStatus.verified}`);
+  doc.text(`Closed: ${data.defectsByStatus.closed}`);
+  doc.moveDown();
+
+  // Vehicle Summary
+  if (data.vehicleSummary.length > 0) {
+    doc.addPage();
+    doc.fontSize(14).font('Helvetica-Bold').text('Vehicle Inspection Summary');
+    doc.moveDown();
+
+    data.vehicleSummary.forEach((vehicle) => {
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`${vehicle.vrm} - ${vehicle.make} ${vehicle.model}`);
+      
+      doc.fontSize(10).font('Helvetica');
+      doc.text(`Inspections: ${vehicle.inspections}`, { indent: 20 });
+      doc.text(`Defects: ${vehicle.defects}`, { indent: 20 });
+      doc.text(`Open Defects: ${vehicle.openDefects}`, { indent: 20 });
+      
+      doc.moveDown(0.5);
+    });
+  }
+
+  // Footer
+  doc.moveDown();
+  doc.fontSize(9).fillColor('#666666');
+  doc.text('This report is generated for DVSA compliance purposes.', { align: 'center' });
+  doc.text('All inspection records are retained for 15 months as required by law.', { align: 'center' });
+
+  doc.end();
+  return stream;
+}
+
+/**
+ * Generate Fleet Utilization Report
+ */
+export function generateFleetUtilizationReport(data: {
+  companyName: string;
+  startDate: Date;
+  endDate: Date;
+  totalVehicles: number;
+  totalShifts: number;
+  totalHours: number;
+  vehicleUtilization: Array<{ vrm: string; hours: number; shifts: number }>;
+}): PassThrough {
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  const stream = new PassThrough();
+  doc.pipe(stream);
+
+  // Header
+  doc.fontSize(20).font('Helvetica-Bold').text('Fleet Utilization Report', { align: 'center' });
+  doc.moveDown();
+
+  // Company & Period Info
+  doc.fontSize(12).font('Helvetica');
+  doc.text(`Company: ${data.companyName}`);
+  doc.text(`Report Period: ${data.startDate.toLocaleDateString('en-GB')} - ${data.endDate.toLocaleDateString('en-GB')}`);
+  doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`);
+  doc.moveDown();
+
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+  doc.moveDown();
+
+  // Summary
+  const avgHoursPerVehicle = data.totalVehicles > 0 
+    ? (data.totalHours / data.totalVehicles).toFixed(1)
+    : '0';
+  
+  doc.fontSize(14).font('Helvetica-Bold').text('Summary');
+  doc.fontSize(11).font('Helvetica');
+  doc.text(`Total Vehicles: ${data.totalVehicles}`);
+  doc.text(`Total Shifts: ${data.totalShifts}`);
+  doc.text(`Total Hours: ${data.totalHours.toFixed(1)} hours`);
+  doc.text(`Average Hours per Vehicle: ${avgHoursPerVehicle} hours`);
+  doc.moveDown();
+
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+  doc.moveDown();
+
+  // Vehicle Utilization
+  doc.fontSize(14).font('Helvetica-Bold').text('Vehicle Utilization');
+  doc.moveDown(0.5);
+
+  data.vehicleUtilization.forEach((vehicle) => {
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`${vehicle.vrm}: ${vehicle.hours.toFixed(1)} hours (${vehicle.shifts} shifts)`);
+  });
+
+  doc.end();
+  return stream;
+}
+
+/**
+ * Generate Driver Performance Report
+ */
+export function generateDriverPerformanceReport(data: {
+  companyName: string;
+  startDate: Date;
+  endDate: Date;
+  driverPerformance: Array<{
+    name: string;
+    email: string;
+    inspections: number;
+    defectsReported: number;
+    hoursWorked: number;
+    shifts: number;
+  }>;
+}): PassThrough {
+  const doc = new PDFDocument({ margin: 50, size: 'A4' });
+  const stream = new PassThrough();
+  doc.pipe(stream);
+
+  // Header
+  doc.fontSize(20).font('Helvetica-Bold').text('Driver Performance Report', { align: 'center' });
+  doc.moveDown();
+
+  // Company & Period Info
+  doc.fontSize(12).font('Helvetica');
+  doc.text(`Company: ${data.companyName}`);
+  doc.text(`Report Period: ${data.startDate.toLocaleDateString('en-GB')} - ${data.endDate.toLocaleDateString('en-GB')}`);
+  doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`);
+  doc.moveDown();
+
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+  doc.moveDown();
+
+  // Driver-by-Driver Breakdown
+  data.driverPerformance.forEach((driver) => {
+    doc.fontSize(14).font('Helvetica-Bold');
+    doc.text(driver.name);
+    
+    doc.fontSize(11).font('Helvetica');
+    doc.text(`Email: ${driver.email}`, { indent: 20 });
+    doc.text(`Inspections Completed: ${driver.inspections}`, { indent: 20 });
+    doc.text(`Defects Reported: ${driver.defectsReported}`, { indent: 20 });
+    doc.text(`Total Hours Worked: ${driver.hoursWorked.toFixed(1)} hours`, { indent: 20 });
+    doc.text(`Shifts: ${driver.shifts}`, { indent: 20 });
+    
+    doc.moveDown();
+  });
+
+  doc.end();
+  return stream;
+}

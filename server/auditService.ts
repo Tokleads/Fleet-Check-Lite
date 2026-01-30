@@ -1,9 +1,10 @@
 import { storage } from "./storage";
 import { Request } from "express";
 import type { InsertAuditLog } from "@shared/schema";
+import { createHash } from 'crypto';
 
-export type AuditAction = 'LOGIN' | 'LOGOUT' | 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW' | 'EXPORT';
-export type AuditEntity = 'USER' | 'VEHICLE' | 'INSPECTION' | 'DEFECT' | 'FUEL' | 'SETTINGS' | 'SESSION' | 'TRAILER' | 'DOCUMENT';
+export type AuditAction = 'LOGIN' | 'LOGOUT' | 'CREATE' | 'UPDATE' | 'DELETE' | 'VIEW' | 'EXPORT' | 'ASSIGN' | 'VERIFY' | 'APPROVE' | 'COMPLETE' | 'CLOCK_IN' | 'CLOCK_OUT';
+export type AuditEntity = 'USER' | 'VEHICLE' | 'INSPECTION' | 'DEFECT' | 'FUEL' | 'SETTINGS' | 'SESSION' | 'TRAILER' | 'DOCUMENT' | 'TIMESHEET' | 'RECTIFICATION' | 'GEOFENCE' | 'NOTIFICATION' | 'SHIFT_CHECK' | 'REMINDER';
 
 interface AuditLogParams {
   companyId: number;
@@ -29,8 +30,37 @@ function getUserAgent(req?: Request): string | undefined {
   return req.headers['user-agent'] || undefined;
 }
 
+/**
+ * Generate SHA-256 hash for audit log entry
+ */
+function generateHash(data: string): string {
+  return createHash('sha256').update(data).digest('hex');
+}
+
+/**
+ * Create hash string from audit log data
+ */
+function createHashString(log: InsertAuditLog, previousHash: string | null, timestamp: Date): string {
+  const data = JSON.stringify({
+    companyId: log.companyId,
+    userId: log.userId,
+    action: log.action,
+    entity: log.entity,
+    entityId: log.entityId,
+    details: log.details,
+    timestamp: timestamp.toISOString(),
+    previousHash: previousHash || 'GENESIS',
+  });
+  return data;
+}
+
 export async function logAudit(params: AuditLogParams): Promise<void> {
   try {
+    // Get the last audit log entry for this company to chain hashes
+    const lastLog = await storage.getLastAuditLog(params.companyId);
+    const previousHash = lastLog?.currentHash || null;
+    
+    // Prepare log entry
     const log: InsertAuditLog = {
       companyId: params.companyId,
       userId: params.userId || null,
@@ -40,11 +70,88 @@ export async function logAudit(params: AuditLogParams): Promise<void> {
       details: params.details || null,
       ipAddress: getClientIp(params.req) || null,
       userAgent: getUserAgent(params.req) || null,
+      previousHash,
+      currentHash: '', // Will be calculated
     };
+    
+    // Generate current hash
+    const timestamp = new Date();
+    const hashString = createHashString(log, previousHash, timestamp);
+    log.currentHash = generateHash(hashString);
     
     await storage.createAuditLog(log);
   } catch (error) {
     console.error("Failed to create audit log:", error);
+  }
+}
+
+/**
+ * Verify the integrity of the audit log chain for a company
+ */
+export async function verifyAuditLogIntegrity(companyId: number): Promise<{
+  valid: boolean;
+  totalEntries: number;
+  firstTamperedEntry?: number;
+  errors: string[];
+}> {
+  try {
+    const logs = await storage.getAuditLogs(companyId, { limit: 10000 });
+    
+    if (logs.length === 0) {
+      return { valid: true, totalEntries: 0, errors: [] };
+    }
+    
+    const errors: string[] = [];
+    let firstTamperedEntry: number | undefined;
+    
+    // Verify each entry's hash
+    for (let i = 0; i < logs.length; i++) {
+      const log = logs[i];
+      const previousHash = i === 0 ? null : logs[i - 1].currentHash;
+      
+      // Verify previous hash matches
+      if (log.previousHash !== previousHash) {
+        errors.push(`Entry ${log.id}: Previous hash mismatch`);
+        if (!firstTamperedEntry) firstTamperedEntry = log.id;
+      }
+      
+      // Recalculate current hash and verify
+      const hashString = createHashString(
+        {
+          companyId: log.companyId,
+          userId: log.userId,
+          action: log.action as AuditAction,
+          entity: log.entity as AuditEntity,
+          entityId: log.entityId,
+          details: log.details as Record<string, unknown> | null,
+          ipAddress: log.ipAddress,
+          userAgent: log.userAgent,
+          previousHash: log.previousHash,
+          currentHash: '', // Not used in hash calculation
+        },
+        previousHash,
+        new Date(log.createdAt)
+      );
+      const expectedHash = generateHash(hashString);
+      
+      if (log.currentHash !== expectedHash) {
+        errors.push(`Entry ${log.id}: Current hash mismatch (tampering detected)`);
+        if (!firstTamperedEntry) firstTamperedEntry = log.id;
+      }
+    }
+    
+    return {
+      valid: errors.length === 0,
+      totalEntries: logs.length,
+      firstTamperedEntry,
+      errors,
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      totalEntries: 0,
+      errors: [`Verification failed: ${error}`],
+    };
   }
 }
 

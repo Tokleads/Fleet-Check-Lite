@@ -1272,5 +1272,834 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== SHIFT CHECKS (END-OF-SHIFT) ====================
+  
+  // Create new shift check
+  app.post("/api/shift-checks", async (req, res) => {
+    try {
+      const { companyId, driverId, vehicleId, timesheetId } = req.body;
+      
+      if (!companyId || !driverId || !vehicleId || !timesheetId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const shiftCheck = await storage.createShiftCheck(
+        Number(companyId),
+        Number(driverId),
+        Number(vehicleId),
+        Number(timesheetId)
+      );
+      
+      res.json(shiftCheck);
+    } catch (error) {
+      console.error("Error creating shift check:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Add check item with photo
+  app.post("/api/shift-checks/:id/item", async (req, res) => {
+    try {
+      const shiftCheckId = Number(req.params.id);
+      const { itemId, label, itemType, status, value, notes } = req.body;
+      
+      let photoStorageFileId: number | undefined;
+      
+      // Handle photo upload if present
+      if (req.files && 'photo' in req.files) {
+        const photoFile = Array.isArray(req.files.photo) ? req.files.photo[0] : req.files.photo;
+        
+        // Upload to object storage
+        const { uploadToObjectStorage } = await import('./objectStorage');
+        const uploadResult = await uploadToObjectStorage(
+          photoFile.data,
+          `shift-checks/${shiftCheckId}/${itemId}-${Date.now()}.jpg`,
+          photoFile.mimetype
+        );
+        
+        // Create storage file record
+        const { storageFiles } = await import('@shared/schema');
+        const { db } = await import('./db');
+        
+        const [storageFile] = await db.insert(storageFiles).values({
+          companyId: req.body.companyId,
+          uploadedBy: req.body.driverId,
+          filename: photoFile.name,
+          storagePath: uploadResult.key,
+          fileSize: photoFile.size,
+          mimeType: photoFile.mimetype,
+          entityType: 'SHIFT_CHECK',
+          entityId: shiftCheckId,
+          retentionUntil: new Date(Date.now() + 15 * 30 * 24 * 60 * 60 * 1000) // 15 months
+        }).returning();
+        
+        photoStorageFileId = storageFile.id;
+      }
+      
+      const item = await storage.addShiftCheckItem(
+        shiftCheckId,
+        itemId,
+        label,
+        itemType,
+        status,
+        value,
+        notes,
+        photoStorageFileId
+      );
+      
+      res.json(item);
+    } catch (error) {
+      console.error("Error adding shift check item:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Complete shift check and clock out
+  app.post("/api/shift-checks/:id/complete", async (req, res) => {
+    try {
+      const shiftCheckId = Number(req.params.id);
+      const { latitude, longitude } = req.body;
+      
+      const result = await storage.completeShiftCheck(
+        shiftCheckId,
+        latitude || '0',
+        longitude || '0'
+      );
+      
+      res.json({
+        success: true,
+        message: 'Shift check completed and driver clocked out',
+        shiftCheck: result
+      });
+    } catch (error) {
+      console.error("Error completing shift check:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get shift checks for company (manager view)
+  app.get("/api/shift-checks/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const checks = await storage.getShiftChecksByCompany(companyId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching shift checks:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get shift checks for driver
+  app.get("/api/shift-checks/driver/:driverId", async (req, res) => {
+    try {
+      const driverId = Number(req.params.driverId);
+      const checks = await storage.getShiftChecksByDriver(driverId);
+      res.json(checks);
+    } catch (error) {
+      console.error("Error fetching driver shift checks:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ===== REMINDER ROUTES (Compliance Tracking) =====
+  
+  // Get reminders for a company
+  app.get("/api/reminders", async (req, res) => {
+    try {
+      const companyId = parseInt(req.query.companyId as string);
+      const reminders = await storage.getActiveReminders(companyId);
+      
+      // Enrich with vehicle VRM
+      const enriched = await Promise.all(
+        reminders.map(async (reminder: any) => {
+          const vehicle = await storage.getVehicleById(reminder.vehicleId);
+          return {
+            ...reminder,
+            vehicleVrm: vehicle?.vrm || 'Unknown',
+          };
+        })
+      );
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create new reminder
+  app.post("/api/reminders", async (req, res) => {
+    try {
+      const reminder = await storage.createReminder(req.body);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Complete reminder
+  app.patch("/api/reminders/:id/complete", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { completedBy, notes } = req.body;
+      const reminder = await storage.completeReminder(id, completedBy, notes);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error completing reminder:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Snooze reminder
+  app.patch("/api/reminders/:id/snooze", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { snoozedBy, snoozedUntil, reason } = req.body;
+      const reminder = await storage.snoozeReminder(id, snoozedBy, new Date(snoozedUntil), reason);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error snoozing reminder:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Dismiss reminder
+  app.patch("/api/reminders/:id/dismiss", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const reminder = await storage.dismissReminder(id);
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error dismissing reminder:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ===== PDF REPORT GENERATION ROUTES =====
+  
+  // Generate DVSA Compliance Report
+  app.post("/api/reports/dvsa-compliance", async (req, res) => {
+    try {
+      const { companyId, startDate, endDate } = req.body;
+      
+      const company = await storage.getCompanyById(companyId);
+      const inspections = await storage.getInspectionsByCompany(companyId);
+      const vehicles = await storage.getVehiclesByCompany(companyId);
+      const defects = await storage.getDefectsByCompany(companyId);
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Filter by date range
+      const filteredInspections = inspections.filter((i: any) => {
+        const inspectionDate = new Date(i.createdAt);
+        return inspectionDate >= start && inspectionDate <= end;
+      });
+      
+      const filteredDefects = defects.filter((d: any) => {
+        const defectDate = new Date(d.createdAt);
+        return defectDate >= start && defectDate <= end;
+      });
+      
+      // Prepare data for PDF
+      const reportData = {
+        companyName: company?.name || 'Unknown Company',
+        startDate: start,
+        endDate: end,
+        totalVehicles: vehicles.length,
+        totalInspections: filteredInspections.length,
+        totalDefects: filteredDefects.length,
+        openDefects: filteredDefects.filter((d: any) => d.status === 'OPEN').length,
+        criticalDefects: filteredDefects.filter((d: any) => d.severity === 'CRITICAL').length,
+        defectsBySeverity: {
+          critical: filteredDefects.filter((d: any) => d.severity === 'CRITICAL').length,
+          major: filteredDefects.filter((d: any) => d.severity === 'MAJOR').length,
+          minor: filteredDefects.filter((d: any) => d.severity === 'MINOR').length,
+        },
+        defectsByStatus: {
+          open: filteredDefects.filter((d: any) => d.status === 'OPEN').length,
+          assigned: filteredDefects.filter((d: any) => d.status === 'ASSIGNED').length,
+          inProgress: filteredDefects.filter((d: any) => d.status === 'IN_PROGRESS').length,
+          rectified: filteredDefects.filter((d: any) => d.status === 'RECTIFIED').length,
+          verified: filteredDefects.filter((d: any) => d.status === 'VERIFIED').length,
+          closed: filteredDefects.filter((d: any) => d.status === 'CLOSED').length,
+        },
+        vehicleSummary: vehicles.map((v: any) => {
+          const vehicleInspections = filteredInspections.filter((i: any) => i.vehicleId === v.id);
+          const vehicleDefects = filteredDefects.filter((d: any) => d.vehicleId === v.id);
+          return {
+            vrm: v.vrm,
+            make: v.make,
+            model: v.model,
+            inspections: vehicleInspections.length,
+            defects: vehicleDefects.length,
+            openDefects: vehicleDefects.filter((d: any) => d.status === 'OPEN').length,
+          };
+        }),
+      };
+      
+      const { generateDVSAComplianceReport } = await import('./pdfService');
+      const pdfStream = generateDVSAComplianceReport(reportData);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="DVSA_Compliance_Report_${start.toISOString().split('T')[0]}_to_${end.toISOString().split('T')[0]}.pdf"`);
+      
+      pdfStream.pipe(res);
+    } catch (error) {
+      console.error("Error generating DVSA compliance report:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Generate Fleet Utilization Report
+  app.post("/api/reports/fleet-utilization", async (req, res) => {
+    try {
+      const { companyId, startDate, endDate } = req.body;
+      
+      const company = await storage.getCompanyById(companyId);
+      const vehicles = await storage.getVehiclesByCompany(companyId);
+      const timesheets = await storage.getTimesheetsByCompany(companyId);
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Filter timesheets by date range
+      const filteredTimesheets = timesheets.filter((t: any) => {
+        const clockInDate = new Date(t.clockInTime);
+        return clockInDate >= start && clockInDate <= end;
+      });
+      
+      const totalHours = filteredTimesheets.reduce((sum: number, t: any) => sum + (t.totalMinutes || 0), 0) / 60;
+      
+      const reportData = {
+        companyName: company?.name || 'Unknown Company',
+        startDate: start,
+        endDate: end,
+        totalVehicles: vehicles.length,
+        totalShifts: filteredTimesheets.length,
+        totalHours,
+        vehicleUtilization: vehicles.map((v: any) => {
+          const vehicleTimesheets = filteredTimesheets.filter((t: any) => t.vehicleId === v.id);
+          const vehicleHours = vehicleTimesheets.reduce((sum: number, t: any) => sum + (t.totalMinutes || 0), 0) / 60;
+          return {
+            vrm: v.vrm,
+            hours: vehicleHours,
+            shifts: vehicleTimesheets.length,
+          };
+        }),
+      };
+      
+      const { generateFleetUtilizationReport } = await import('./pdfService');
+      const pdfStream = generateFleetUtilizationReport(reportData);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Fleet_Utilization_Report_${start.toISOString().split('T')[0]}_to_${end.toISOString().split('T')[0]}.pdf"`);
+      
+      pdfStream.pipe(res);
+    } catch (error) {
+      console.error("Error generating fleet utilization report:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Generate Driver Performance Report
+  app.post("/api/reports/driver-performance", async (req, res) => {
+    try {
+      const { companyId, startDate, endDate } = req.body;
+      
+      const company = await storage.getCompanyById(companyId);
+      const users = await storage.getUsersByCompany(companyId);
+      const drivers = users.filter((u: any) => u.role === 'DRIVER');
+      const inspections = await storage.getInspectionsByCompany(companyId);
+      const defects = await storage.getDefectsByCompany(companyId);
+      const timesheets = await storage.getTimesheetsByCompany(companyId);
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Filter by date range
+      const filteredInspections = inspections.filter((i: any) => {
+        const date = new Date(i.createdAt);
+        return date >= start && date <= end;
+      });
+      
+      const filteredDefects = defects.filter((d: any) => {
+        const date = new Date(d.createdAt);
+        return date >= start && date <= end;
+      });
+      
+      const filteredTimesheets = timesheets.filter((t: any) => {
+        const date = new Date(t.clockInTime);
+        return date >= start && date <= end;
+      });
+      
+      const reportData = {
+        companyName: company?.name || 'Unknown Company',
+        startDate: start,
+        endDate: end,
+        driverPerformance: drivers.map((driver: any) => {
+          const driverInspections = filteredInspections.filter((i: any) => i.driverId === driver.id);
+          const driverDefects = filteredDefects.filter((d: any) => d.reportedBy === driver.id);
+          const driverTimesheets = filteredTimesheets.filter((t: any) => t.driverId === driver.id);
+          const driverHours = driverTimesheets.reduce((sum: number, t: any) => sum + (t.totalMinutes || 0), 0) / 60;
+          
+          return {
+            name: driver.name || 'Unknown Driver',
+            email: driver.email || 'N/A',
+            inspections: driverInspections.length,
+            defectsReported: driverDefects.length,
+            hoursWorked: driverHours,
+            shifts: driverTimesheets.length,
+          };
+        }),
+      };
+      
+      const { generateDriverPerformanceReport } = await import('./pdfService');
+      const pdfStream = generateDriverPerformanceReport(reportData);
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="Driver_Performance_Report_${start.toISOString().split('T')[0]}_to_${end.toISOString().split('T')[0]}.pdf"`);
+      
+      pdfStream.pipe(res);
+    } catch (error) {
+      console.error("Error generating driver performance report:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ===== GDPR COMPLIANCE ROUTES =====
+  
+  // Export user data (GDPR Right to Data Portability)
+  app.get("/api/gdpr/export/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      const { exportUserData, generateGDPRDataExport } = await import('./gdprService');
+      const userData = await exportUserData(userId);
+      const jsonExport = generateGDPRDataExport(userData);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="user_data_export_${userId}_${new Date().toISOString().split('T')[0]}.json"`);
+      
+      res.send(jsonExport);
+    } catch (error) {
+      console.error("Error exporting user data:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Anonymize user (GDPR Right to be Forgotten)
+  app.post("/api/gdpr/anonymize/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      const { anonymizeUser } = await import('./gdprService');
+      await anonymizeUser(userId);
+      
+      res.json({ success: true, message: 'User anonymized successfully' });
+    } catch (error) {
+      console.error("Error anonymizing user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Record user consent
+  app.post("/api/gdpr/consent", async (req, res) => {
+    try {
+      const { userId, consentType, granted } = req.body;
+      const ipAddress = req.ip || 'unknown';
+      
+      const { recordUserConsent } = await import('./gdprService');
+      await recordUserConsent(userId, consentType, granted, ipAddress);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording consent:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Check user consent
+  app.get("/api/gdpr/consent/:userId/:consentType", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const consentType = req.params.consentType;
+      
+      const { hasUserConsent } = await import('./gdprService');
+      const hasConsent = await hasUserConsent(userId, consentType);
+      
+      res.json({ hasConsent });
+    } catch (error) {
+      console.error("Error checking consent:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return httpServer;
 }
+
+  // ==================== GPS TRACKING & LOCATION ====================
+  
+  // Submit driver location (5-minute ping from mobile app)
+  app.post("/api/driver/location", async (req, res) => {
+    try {
+      const { driverId, companyId, latitude, longitude, speed, heading, accuracy } = req.body;
+      
+      if (!driverId || !companyId || !latitude || !longitude) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const location = await storage.createDriverLocation({
+        driverId: Number(driverId),
+        companyId: Number(companyId),
+        latitude: String(latitude),
+        longitude: String(longitude),
+        speed: speed || 0,
+        heading,
+        accuracy,
+        timestamp: new Date()
+      });
+      
+      // Check for stagnation (30 minutes threshold)
+      await storage.checkStagnation(Number(driverId), Number(companyId));
+      
+      // Check geofence entry/exit for timesheet management
+      await storage.checkGeofences(Number(driverId), Number(companyId), String(latitude), String(longitude));
+      
+      res.json(location);
+    } catch (error) {
+      console.error("Location submission error:", error);
+      res.status(500).json({ error: "Failed to submit location" });
+    }
+  });
+  
+  // Batch submit driver locations (offline queue processing)
+  app.post("/api/driver/location/batch", async (req, res) => {
+    try {
+      const { locations } = req.body;
+      
+      if (!locations || !Array.isArray(locations)) {
+        return res.status(400).json({ error: "Invalid locations array" });
+      }
+      
+      const results = [];
+      
+      for (const loc of locations) {
+        try {
+          const location = await storage.createDriverLocation({
+            driverId: Number(loc.driverId),
+            companyId: Number(loc.companyId),
+            latitude: String(loc.latitude),
+            longitude: String(loc.longitude),
+            speed: loc.speed || 0,
+            heading: loc.heading,
+            accuracy: loc.accuracy,
+            timestamp: new Date(loc.timestamp)
+          });
+          results.push({ success: true, location });
+        } catch (error) {
+          results.push({ success: false, error: String(error) });
+        }
+      }
+      
+      res.json({ 
+        processed: results.length,
+        successful: results.filter(r => r.success).length,
+        failed: results.filter(r => !r.success).length,
+        results 
+      });
+    } catch (error) {
+      console.error("Batch location submission error:", error);
+      res.status(500).json({ error: "Failed to process batch locations" });
+    }
+  });
+  
+  // Get all driver locations for company (manager dashboard)
+  app.get("/api/manager/driver-locations/:companyId", async (req, res) => {
+    try {
+      const locations = await storage.getLatestDriverLocations(Number(req.params.companyId));
+      res.json(locations);
+    } catch (error) {
+      console.error("Failed to fetch driver locations:", error);
+      res.status(500).json({ error: "Failed to fetch locations" });
+    }
+  });
+  
+  // ==================== GEOFENCING ====================
+  
+  // Create geofence (depot location)
+  app.post("/api/geofences", async (req, res) => {
+    try {
+      const { companyId, name, latitude, longitude, radiusMeters } = req.body;
+      
+      if (!companyId || !name || !latitude || !longitude) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const geofence = await storage.createGeofence({
+        companyId: Number(companyId),
+        name,
+        latitude: String(latitude),
+        longitude: String(longitude),
+        radiusMeters: radiusMeters || 250,
+        isActive: true
+      });
+      
+      res.json(geofence);
+    } catch (error) {
+      console.error("Geofence creation error:", error);
+      res.status(500).json({ error: "Failed to create geofence" });
+    }
+  });
+  
+  // Get all geofences for company
+  app.get("/api/geofences/:companyId", async (req, res) => {
+    try {
+      const geofences = await storage.getGeofencesByCompany(Number(req.params.companyId));
+      res.json(geofences);
+    } catch (error) {
+      console.error("Failed to fetch geofences:", error);
+      res.status(500).json({ error: "Failed to fetch geofences" });
+    }
+  });
+  
+  // Update geofence
+  app.patch("/api/geofences/:id", async (req, res) => {
+    try {
+      const geofence = await storage.updateGeofence(Number(req.params.id), req.body);
+      res.json(geofence);
+    } catch (error) {
+      console.error("Failed to update geofence:", error);
+      res.status(500).json({ error: "Failed to update geofence" });
+    }
+  });
+  
+  // ==================== TIMESHEETS ====================
+  
+  // Get timesheets for company
+  app.get("/api/timesheets/:companyId", async (req, res) => {
+    try {
+      const { status, startDate, endDate } = req.query;
+      const timesheets = await storage.getTimesheets(
+        Number(req.params.companyId),
+        status as string,
+        startDate as string,
+        endDate as string
+      );
+      res.json(timesheets);
+    } catch (error) {
+      console.error("Failed to fetch timesheets:", error);
+      res.status(500).json({ error: "Failed to fetch timesheets" });
+    }
+  });
+  
+  // Export timesheets as CSV
+  app.post("/api/timesheets/export", async (req, res) => {
+    try {
+      const { companyId, startDate, endDate } = req.body;
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      const timesheets = await storage.getTimesheets(
+        Number(companyId),
+        "COMPLETED",
+        startDate,
+        endDate
+      );
+      
+      // Generate CSV
+      const csv = await storage.generateTimesheetCSV(timesheets);
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="timesheets-${Date.now()}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("CSV export error:", error);
+      res.status(500).json({ error: "Failed to export timesheets" });
+    }
+  });
+  
+  // Manual timesheet override
+  app.patch("/api/timesheets/:id", async (req, res) => {
+    try {
+      const timesheet = await storage.updateTimesheet(Number(req.params.id), req.body);
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Failed to update timesheet:", error);
+      res.status(500).json({ error: "Failed to update timesheet" });
+    }
+  });
+  
+  // Get active timesheet for driver
+  app.get("/api/timesheets/active/:driverId", async (req, res) => {
+    try {
+      const timesheet = await storage.getActiveTimesheet(Number(req.params.driverId));
+      if (!timesheet) {
+        return res.status(404).json({ error: "No active timesheet" });
+      }
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Error fetching active timesheet:", error);
+      res.status(500).json({ error: "Failed to fetch active timesheet" });
+    }
+  });
+  
+  // Clock in
+  app.post("/api/timesheets/clock-in", async (req, res) => {
+    try {
+      const { companyId, driverId, depotId, latitude, longitude } = req.body;
+      
+      if (!companyId || !driverId || !depotId || !latitude || !longitude) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const timesheet = await storage.clockIn(
+        Number(companyId),
+        Number(driverId),
+        Number(depotId),
+        latitude,
+        longitude
+      );
+      
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Clock in error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to clock in" });
+    }
+  });
+  
+  // Clock out
+  app.post("/api/timesheets/clock-out", async (req, res) => {
+    try {
+      const { timesheetId, latitude, longitude } = req.body;
+      
+      if (!timesheetId || !latitude || !longitude) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const timesheet = await storage.clockOut(
+        Number(timesheetId),
+        latitude,
+        longitude
+      );
+      
+      res.json(timesheet);
+    } catch (error) {
+      console.error("Clock out error:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : "Failed to clock out" });
+    }
+  });
+  
+  // ==================== STAGNATION ALERTS ====================
+  
+  // Get stagnation alerts for company
+  app.get("/api/stagnation-alerts/:companyId", async (req, res) => {
+    try {
+      const { status } = req.query;
+      const alerts = await storage.getStagnationAlerts(
+        Number(req.params.companyId),
+        status as string
+      );
+      res.json(alerts);
+    } catch (error) {
+      console.error("Failed to fetch stagnation alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+  
+  // Acknowledge stagnation alert
+  app.patch("/api/stagnation-alerts/:id", async (req, res) => {
+    try {
+      const { acknowledgedBy, resolutionNotes, status } = req.body;
+      
+      const alert = await storage.updateStagnationAlert(Number(req.params.id), {
+        status,
+        acknowledgedBy: acknowledgedBy ? Number(acknowledgedBy) : undefined,
+        acknowledgedAt: new Date(),
+        resolutionNotes
+      });
+      
+      res.json(alert);
+    } catch (error) {
+      console.error("Failed to acknowledge alert:", error);
+      res.status(500).json({ error: "Failed to acknowledge alert" });
+    }
+  });
+  
+  // ==================== TITAN COMMAND (NOTIFICATIONS) ====================
+  
+  // Send broadcast notification to all drivers
+  app.post("/api/notifications/broadcast", async (req, res) => {
+    try {
+      const { companyId, senderId, title, message, priority } = req.body;
+      
+      if (!companyId || !senderId || !title || !message) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const notification = await storage.createBroadcastNotification({
+        companyId: Number(companyId),
+        senderId: Number(senderId),
+        title,
+        message,
+        priority: priority || "NORMAL",
+        isBroadcast: true
+      });
+      
+      res.json(notification);
+    } catch (error) {
+      console.error("Broadcast notification error:", error);
+      res.status(500).json({ error: "Failed to send broadcast" });
+    }
+  });
+  
+  // Send individual notification
+  app.post("/api/notifications/individual", async (req, res) => {
+    try {
+      const { companyId, senderId, recipientId, title, message, priority } = req.body;
+      
+      if (!companyId || !senderId || !recipientId || !title || !message) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const notification = await storage.createNotification({
+        companyId: Number(companyId),
+        senderId: Number(senderId),
+        recipientId: Number(recipientId),
+        title,
+        message,
+        priority: priority || "NORMAL",
+        isBroadcast: false
+      });
+      
+      res.json(notification);
+    } catch (error) {
+      console.error("Individual notification error:", error);
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+  
+  // Get notifications for driver
+  app.get("/api/notifications/:driverId", async (req, res) => {
+    try {
+      const notifications = await storage.getDriverNotifications(Number(req.params.driverId));
+      res.json(notifications);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+  
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const notification = await storage.markNotificationRead(Number(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      res.status(500).json({ error: "Failed to update notification" });
+    }
+  });

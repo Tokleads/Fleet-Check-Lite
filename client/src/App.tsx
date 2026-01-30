@@ -19,9 +19,14 @@ import ManagerSettings from "@/pages/manager/Settings";
 import ManagerDocuments from "@/pages/manager/Documents";
 import ManagerLicense from "@/pages/manager/License";
 import ManagerAuditLog from "@/pages/manager/AuditLog";
+import LiveTracking from "@/pages/manager/LiveTracking";
+import Timesheets from "@/pages/manager/Timesheets";
+import TitanCommand from "@/pages/manager/TitanCommand";
+import Geofences from "@/pages/manager/Geofences";
 import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
 import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
 import NotFound from "@/pages/not-found";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 function Router() {
   return (
@@ -42,6 +47,10 @@ function Router() {
       <Route path="/manager/license" component={ManagerLicense} />
       <Route path="/manager/audit-log" component={ManagerAuditLog} />
       <Route path="/manager/settings" component={ManagerSettings} />
+      <Route path="/manager/live-tracking" component={LiveTracking} />
+      <Route path="/manager/timesheets" component={Timesheets} />
+      <Route path="/manager/titan-command" component={TitanCommand} />
+      <Route path="/manager/geofences" component={Geofences} />
       <Route path="/demo/dc-european" component={DCEuropeanDemo} />
       <Route path="/demo/trucker-tim" component={TruckerTimDemo} />
       <Route component={NotFound} />
@@ -55,6 +64,7 @@ function App() {
       <BrandProvider>
         <Router />
         <Toaster />
+        <PWAInstallPrompt />
       </BrandProvider>
     </QueryClientProvider>
   );

@@ -12,7 +12,12 @@ import {
   type LicenseUpgradeRequest, type InsertLicenseUpgradeRequest,
   type AuditLog, type InsertAuditLog,
   type VehicleUsageInfo, type VehicleUsageState,
-  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs
+  type DriverLocation, type InsertDriverLocation,
+  type Geofence, type InsertGeofence,
+  type Timesheet, type InsertTimesheet,
+  type StagnationAlert, type InsertStagnationAlert,
+  type Notification, type InsertNotification,
+  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs, driverLocations, geofences, timesheets, stagnationAlerts, notifications
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
@@ -101,6 +106,53 @@ export interface IStorage {
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(companyId: number, options?: { limit?: number; offset?: number; entity?: string; action?: string }): Promise<AuditLog[]>;
   getAuditLogCount(companyId: number, options?: { entity?: string; action?: string }): Promise<number>;
+  
+  // GPS Tracking & Location operations
+  createDriverLocation(location: InsertDriverLocation): Promise<DriverLocation>;
+  getLatestDriverLocations(companyId: number): Promise<(DriverLocation & { driver?: User })[]>;
+  checkStagnation(driverId: number, companyId: number): Promise<void>;
+  
+  // Geofence operations
+  createGeofence(geofence: InsertGeofence): Promise<Geofence>;
+  getGeofencesByCompany(companyId: number): Promise<Geofence[]>;
+  updateGeofence(id: number, updates: Partial<Geofence>): Promise<Geofence | undefined>;
+  checkGeofences(driverId: number, companyId: number, latitude: string, longitude: string): Promise<void>;
+  
+  // Timesheet operations
+  getTimesheets(companyId: number, status?: string, startDate?: string, endDate?: string): Promise<(Timesheet & { driver?: User })[]>;
+  getActiveTimesheet(driverId: number): Promise<Timesheet | undefined>;
+  clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string): Promise<Timesheet>;
+  clockOut(timesheetId: number, latitude: string, longitude: string): Promise<Timesheet>;
+  updateTimesheet(id: number, updates: Partial<Timesheet>): Promise<Timesheet | undefined>;
+  generateTimesheetCSV(timesheets: (Timesheet & { driver?: User })[]): Promise<string>;
+  
+  // Stagnation Alert operations
+  getStagnationAlerts(companyId: number, status?: string): Promise<(StagnationAlert & { driver?: User })[]>;
+  updateStagnationAlert(id: number, updates: Partial<StagnationAlert>): Promise<StagnationAlert | undefined>;
+  
+  // Notification operations (Titan Command)
+  createBroadcastNotification(notification: InsertNotification): Promise<Notification>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getDriverNotifications(driverId: number): Promise<Notification[]>;
+  markNotificationRead(id: number): Promise<Notification | undefined>;
+  
+  // Shift check operations (End-of-shift vehicle checks)
+  createShiftCheck(companyId: number, driverId: number, vehicleId: number, timesheetId: number): Promise<any>;
+  addShiftCheckItem(shiftCheckId: number, itemId: string, label: string, itemType: string, status: string, value?: string, notes?: string, photoStorageFileId?: number): Promise<any>;
+  completeShiftCheck(shiftCheckId: number, latitude: string, longitude: string): Promise<any>;
+  getShiftChecksByCompany(companyId: number): Promise<any[]>;
+  getShiftChecksByDriver(driverId: number): Promise<any[]>;
+  
+  // Reminder operations (Compliance tracking)
+  createReminder(reminder: any): Promise<any>;
+  getActiveReminders(companyId?: number): Promise<any[]>;
+  getRemindersByVehicle(vehicleId: number): Promise<any[]>;
+  updateReminder(id: number, updates: Partial<any>): Promise<any | undefined>;
+  completeReminder(id: number, completedBy: number, notes?: string): Promise<any | undefined>;
+  snoozeReminder(id: number, snoozedBy: number, snoozedUntil: Date, reason?: string): Promise<any | undefined>;
+  dismissReminder(id: number): Promise<any | undefined>;
+  getCompany(companyId: number): Promise<any | undefined>;
+  getVehicle(vehicleId: number): Promise<any | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -600,6 +652,661 @@ export class DatabaseStorage implements IStorage {
     
     return result?.count || 0;
   }
+  
+  // ==================== GPS TRACKING & LOCATION ====================
+  
+  async createDriverLocation(location: InsertDriverLocation): Promise<DriverLocation> {
+    const [newLocation] = await db.insert(driverLocations).values(location).returning();
+    return newLocation;
+  }
+  
+  async getLatestDriverLocations(companyId: number): Promise<(DriverLocation & { driver?: User })[]> {
+    // Get the latest location for each driver
+    const latestLocations = await db
+      .select()
+      .from(driverLocations)
+      .where(eq(driverLocations.companyId, companyId))
+      .orderBy(desc(driverLocations.timestamp));
+    
+    // Group by driver and get only the most recent
+    const locationMap = new Map<number, DriverLocation>();
+    for (const loc of latestLocations) {
+      if (!locationMap.has(loc.driverId)) {
+        locationMap.set(loc.driverId, loc);
+      }
+    }
+    
+    // Fetch driver info
+    const result = [];
+    for (const location of locationMap.values()) {
+      const driver = await this.getUser(location.driverId);
+      result.push({ ...location, driver });
+    }
+    
+    return result;
+  }
+  
+  async checkStagnation(driverId: number, companyId: number): Promise<void> {
+    // Get last 7 locations (35 minutes of data at 5-min intervals)
+    const recentLocations = await db
+      .select()
+      .from(driverLocations)
+      .where(and(
+        eq(driverLocations.driverId, driverId),
+        eq(driverLocations.companyId, companyId)
+      ))
+      .orderBy(desc(driverLocations.timestamp))
+      .limit(7);
+    
+    if (recentLocations.length < 6) return; // Need at least 30 minutes of data
+    
+    const latest = recentLocations[0];
+    const thirtyMinAgo = recentLocations[6];
+    
+    // Check if coordinates unchanged and speed is 0
+    const isStagnant = 
+      latest.latitude === thirtyMinAgo.latitude &&
+      latest.longitude === thirtyMinAgo.longitude &&
+      latest.speed === 0;
+    
+    if (isStagnant && !latest.isStagnant) {
+      // Create stagnation alert
+      const stagnationStart = new Date(thirtyMinAgo.timestamp);
+      const durationMinutes = Math.floor((new Date(latest.timestamp).getTime() - stagnationStart.getTime()) / 60000);
+      
+      await db.insert(stagnationAlerts).values({
+        companyId,
+        driverId,
+        latitude: latest.latitude,
+        longitude: latest.longitude,
+        stagnationStartTime: stagnationStart,
+        stagnationDurationMinutes: durationMinutes,
+        status: 'ACTIVE'
+      });
+      
+      // Mark location as stagnant
+      await db.update(driverLocations)
+        .set({ isStagnant: true })
+        .where(eq(driverLocations.id, latest.id));
+    }
+  }
+  
+  // ==================== GEOFENCING ====================
+  
+  async createGeofence(geofence: InsertGeofence): Promise<Geofence> {
+    const [newGeofence] = await db.insert(geofences).values(geofence).returning();
+    return newGeofence;
+  }
+  
+  async getGeofencesByCompany(companyId: number): Promise<Geofence[]> {
+    return await db.select().from(geofences)
+      .where(and(
+        eq(geofences.companyId, companyId),
+        eq(geofences.isActive, true)
+      ));
+  }
+  
+  async updateGeofence(id: number, updates: Partial<Geofence>): Promise<Geofence | undefined> {
+    const [updated] = await db.update(geofences)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(geofences.id, id))
+      .returning();
+    return updated || undefined;
+  }
+  
+  async checkGeofences(driverId: number, companyId: number, latitude: string, longitude: string): Promise<void> {
+    const allGeofences = await this.getGeofencesByCompany(companyId);
+    
+    const lat1 = parseFloat(latitude);
+    const lon1 = parseFloat(longitude);
+    
+    // Check each geofence
+    for (const geofence of allGeofences) {
+      const lat2 = parseFloat(geofence.latitude);
+      const lon2 = parseFloat(geofence.longitude);
+      
+      // Calculate distance using Haversine formula
+      const R = 6371000; // Earth's radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      const isInside = distance <= geofence.radiusMeters;
+      
+      // Check for active timesheet
+      const [activeTimesheet] = await db.select().from(timesheets)
+        .where(and(
+          eq(timesheets.driverId, driverId),
+          eq(timesheets.depotId, geofence.id),
+          eq(timesheets.status, 'ACTIVE')
+        ))
+        .limit(1);
+      
+      if (isInside && !activeTimesheet) {
+        // Driver entered geofence - create timesheet
+        await db.insert(timesheets).values({
+          companyId,
+          driverId,
+          depotId: geofence.id,
+          depotName: geofence.name,
+          arrivalTime: new Date(),
+          arrivalLatitude: latitude,
+          arrivalLongitude: longitude,
+          status: 'ACTIVE'
+        });
+      } else if (!isInside && activeTimesheet) {
+        // Driver left geofence - close timesheet
+        const departureTime = new Date();
+        const totalMinutes = Math.floor((departureTime.getTime() - new Date(activeTimesheet.arrivalTime).getTime()) / 60000);
+        
+        await db.update(timesheets)
+          .set({
+            departureTime,
+            departureLatitude: latitude,
+            departureLongitude: longitude,
+            totalMinutes,
+            status: 'COMPLETED',
+            updatedAt: new Date()
+          })
+          .where(eq(timesheets.id, activeTimesheet.id));
+      }
+    }
+  }
+  
+  // ==================== TIMESHEETS ====================
+  
+  async getTimesheets(companyId: number, status?: string, startDate?: string, endDate?: string): Promise<(Timesheet & { driver?: User })[]> {
+    let conditions = [eq(timesheets.companyId, companyId)];
+    
+    if (status) {
+      conditions.push(eq(timesheets.status, status));
+    }
+    if (startDate) {
+      conditions.push(gte(timesheets.arrivalTime, new Date(startDate)));
+    }
+    if (endDate) {
+      conditions.push(sql`${timesheets.arrivalTime} <= ${new Date(endDate)}`);
+    }
+    
+    const sheets = await db.select().from(timesheets)
+      .where(and(...conditions))
+      .orderBy(desc(timesheets.arrivalTime));
+    
+    // Fetch driver info
+    const result = [];
+    for (const sheet of sheets) {
+      const driver = await this.getUser(sheet.driverId);
+      result.push({ ...sheet, driver });
+    }
+    
+    return result;
+  }
+  
+  async getActiveTimesheet(driverId: number): Promise<Timesheet | undefined> {
+    const [active] = await db.select().from(timesheets)
+      .where(and(
+        eq(timesheets.driverId, driverId),
+        eq(timesheets.status, 'ACTIVE')
+      ))
+      .limit(1);
+    return active || undefined;
+  }
+  
+  async clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string): Promise<Timesheet> {
+    // Check if driver already has an active timesheet
+    const existing = await this.getActiveTimesheet(driverId);
+    if (existing) {
+      throw new Error('Driver already clocked in');
+    }
+    
+    // Get depot info
+    const depot = await db.select().from(geofences)
+      .where(eq(geofences.id, depotId))
+      .limit(1);
+    
+    if (!depot[0]) {
+      throw new Error('Depot not found');
+    }
+    
+    // Create new timesheet
+    const [timesheet] = await db.insert(timesheets).values({
+      companyId,
+      driverId,
+      depotId,
+      depotName: depot[0].name,
+      arrivalTime: new Date(),
+      arrivalLatitude: latitude,
+      arrivalLongitude: longitude,
+      status: 'ACTIVE',
+      departureTime: null,
+      totalMinutes: null,
+      departureLatitude: null,
+      departureLongitude: null
+    }).returning();
+    
+    if (!timesheet) {
+      throw new Error('Failed to create timesheet');
+    }
+    
+    return timesheet;
+  }
+  
+  async clockOut(timesheetId: number, latitude: string, longitude: string): Promise<Timesheet> {
+    // Get existing timesheet
+    const [existing] = await db.select().from(timesheets)
+      .where(eq(timesheets.id, timesheetId))
+      .limit(1);
+    
+    if (!existing) {
+      throw new Error('Timesheet not found');
+    }
+    
+    if (existing.status === 'COMPLETED') {
+      throw new Error('Timesheet already completed');
+    }
+    
+    const departureTime = new Date();
+    const totalMinutes = Math.floor(
+      (departureTime.getTime() - new Date(existing.arrivalTime).getTime()) / 60000
+    );
+    
+    // Update timesheet
+    const [updated] = await db.update(timesheets)
+      .set({
+        departureTime,
+        departureLatitude: latitude,
+        departureLongitude: longitude,
+        totalMinutes,
+        status: 'COMPLETED',
+        updatedAt: new Date()
+      })
+      .where(eq(timesheets.id, timesheetId))
+      .returning();
+    
+    if (!updated) {
+      throw new Error('Failed to update timesheet');
+    }
+    
+    return updated;
+  }
+  
+  async updateTimesheet(id: number, updates: Partial<Timesheet>): Promise<Timesheet | undefined> {
+    const [updated] = await db.update(timesheets)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(timesheets.id, id))
+      .returning();
+    return updated || undefined;
+  }
+  
+  async generateTimesheetCSV(timesheets: (Timesheet & { driver?: User })[]): Promise<string> {
+    // Enhanced CSV format for wage invoices
+    const header = 'Driver Name,Date,Clock In,Clock Out,Depot,Total Hours,Break Time (mins),Net Hours,Overtime,Status\n';
+    
+    const rows = timesheets.map(ts => {
+      const driverName = ts.driver?.name || 'Unknown';
+      const date = new Date(ts.arrivalTime).toLocaleDateString('en-GB');
+      const clockIn = new Date(ts.arrivalTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const clockOut = ts.departureTime 
+        ? new Date(ts.departureTime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+        : 'Active';
+      
+      const totalMinutes = ts.totalMinutes || 0;
+      const totalHours = (totalMinutes / 60).toFixed(2);
+      
+      // Calculate break time (30 mins for shifts > 6 hours)
+      const breakTime = totalMinutes > 360 ? 30 : 0;
+      const netMinutes = totalMinutes - breakTime;
+      const netHours = (netMinutes / 60).toFixed(2);
+      
+      // Calculate overtime (>8 hours/day)
+      const overtimeMinutes = Math.max(0, netMinutes - 480);
+      const overtime = (overtimeMinutes / 60).toFixed(2);
+      
+      return `"${driverName}",${date},${clockIn},${clockOut},"${ts.depotName}",${totalHours},${breakTime},${netHours},${overtime},${ts.status}`;
+    }).join('\n');
+    
+    // Add weekly summary at the bottom
+    const driverSummaries = new Map<number, { name: string; totalHours: number; shifts: number }>();
+    
+    timesheets.forEach(ts => {
+      if (ts.status === 'COMPLETED' && ts.totalMinutes) {
+        const existing = driverSummaries.get(ts.driverId);
+        const hours = ts.totalMinutes / 60;
+        
+        if (existing) {
+          existing.totalHours += hours;
+          existing.shifts += 1;
+        } else {
+          driverSummaries.set(ts.driverId, {
+            name: ts.driver?.name || 'Unknown',
+            totalHours: hours,
+            shifts: 1
+          });
+        }
+      }
+    });
+    
+    let summary = '\n\n--- WEEKLY SUMMARY ---\n';
+    summary += 'Driver Name,Total Shifts,Total Hours,Regular Hours,Overtime Hours\n';
+    
+    driverSummaries.forEach(({ name, totalHours, shifts }) => {
+      const regularHours = Math.min(totalHours, 40).toFixed(2);
+      const overtimeHours = Math.max(0, totalHours - 40).toFixed(2);
+      summary += `"${name}",${shifts},${totalHours.toFixed(2)},${regularHours},${overtimeHours}\n`;
+    });
+    
+    return header + rows + summary;
+  }
+  
+  // ==================== STAGNATION ALERTS ====================
+  
+  async getStagnationAlerts(companyId: number, status?: string): Promise<(StagnationAlert & { driver?: User })[]> {
+    let conditions = [eq(stagnationAlerts.companyId, companyId)];
+    
+    if (status) {
+      conditions.push(eq(stagnationAlerts.status, status));
+    }
+    
+    const alerts = await db.select().from(stagnationAlerts)
+      .where(and(...conditions))
+      .orderBy(desc(stagnationAlerts.createdAt));
+    
+    // Fetch driver info
+    const result = [];
+    for (const alert of alerts) {
+      const driver = await this.getUser(alert.driverId);
+      result.push({ ...alert, driver });
+    }
+    
+    return result;
+  }
+  
+  async updateStagnationAlert(id: number, updates: Partial<StagnationAlert>): Promise<StagnationAlert | undefined> {
+    const [updated] = await db.update(stagnationAlerts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(stagnationAlerts.id, id))
+      .returning();
+    return updated || undefined;
+  }
+  
+  // ==================== NOTIFICATIONS (TITAN COMMAND) ====================
+  
+  async createBroadcastNotification(notification: InsertNotification): Promise<Notification> {
+    // Get all drivers in the company
+    const drivers = await db.select().from(users)
+      .where(and(
+        eq(users.companyId, notification.companyId),
+        eq(users.role, 'DRIVER'),
+        eq(users.active, true)
+      ));
+    
+    // Create notification for each driver
+    const notifications = [];
+    for (const driver of drivers) {
+      const [notif] = await db.insert(notifications).values({
+        ...notification,
+        recipientId: driver.id,
+        isBroadcast: true
+      }).returning();
+      notifications.push(notif);
+    }
+    
+    return notifications[0]; // Return first one as representative
+  }
+  
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const [newNotification] = await db.insert(notifications).values(notification).returning();
+    return newNotification;
+  }
+  
+  async getDriverNotifications(driverId: number): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(eq(notifications.recipientId, driverId))
+      .orderBy(desc(notifications.createdAt));
+  }
+  
+  async markNotificationRead(id: number): Promise<Notification | undefined> {
+    const [updated] = await db.update(notifications)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notifications.id, id))
+      .returning();
+    return updated || undefined;
+  }
+  
+  // ==================== SHIFT CHECKS (END-OF-SHIFT) ====================
+  
+  async createShiftCheck(companyId: number, driverId: number, vehicleId: number, timesheetId: number): Promise<any> {
+    const { shiftChecks } = await import('@shared/schema');
+    
+    const [shiftCheck] = await db.insert(shiftChecks).values({
+      companyId,
+      driverId,
+      vehicleId,
+      timesheetId,
+      status: 'in_progress'
+    }).returning();
+    
+    return shiftCheck;
+  }
+  
+  async addShiftCheckItem(
+    shiftCheckId: number,
+    itemId: string,
+    label: string,
+    itemType: string,
+    status: string,
+    value?: string,
+    notes?: string,
+    photoStorageFileId?: number
+  ): Promise<any> {
+    const { shiftCheckItems } = await import('@shared/schema');
+    
+    const [item] = await db.insert(shiftCheckItems).values({
+      shiftCheckId,
+      itemId,
+      label,
+      itemType,
+      status,
+      value,
+      notes,
+      photoStorageFileId,
+      completedAt: new Date()
+    }).returning();
+    
+    return item;
+  }
+  
+  async completeShiftCheck(shiftCheckId: number, latitude: string, longitude: string): Promise<any> {
+    const { shiftChecks } = await import('@shared/schema');
+    
+    // Get the shift check to find the timesheet
+    const [shiftCheck] = await db.select().from(shiftChecks).where(eq(shiftChecks.id, shiftCheckId));
+    
+    if (!shiftCheck) {
+      throw new Error('Shift check not found');
+    }
+    
+    // Update shift check to completed
+    const [updated] = await db.update(shiftChecks)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        latitude,
+        longitude
+      })
+      .where(eq(shiftChecks.id, shiftCheckId))
+      .returning();
+    
+    // Automatically clock out the driver by completing their timesheet
+    if (shiftCheck.timesheetId) {
+      await this.clockOut(shiftCheck.timesheetId, latitude, longitude);
+    }
+    
+    return updated;
+  }
+  
+  async getShiftChecksByCompany(companyId: number): Promise<any[]> {
+    const { shiftChecks, shiftCheckItems } = await import('@shared/schema');
+    
+    const checks = await db.select({
+      shiftCheck: shiftChecks,
+      driver: users,
+      vehicle: vehicles
+    })
+      .from(shiftChecks)
+      .leftJoin(users, eq(shiftChecks.driverId, users.id))
+      .leftJoin(vehicles, eq(shiftChecks.vehicleId, vehicles.id))
+      .where(eq(shiftChecks.companyId, companyId))
+      .orderBy(desc(shiftChecks.createdAt));
+    
+    // Get items for each check
+    const checksWithItems = await Promise.all(
+      checks.map(async (check) => {
+        const items = await db.select()
+          .from(shiftCheckItems)
+          .where(eq(shiftCheckItems.shiftCheckId, check.shiftCheck.id));
+        
+        return {
+          ...check.shiftCheck,
+          driver: check.driver,
+          vehicle: check.vehicle,
+          items
+        };
+      })
+    );
+    
+    return checksWithItems;
+  }
+  
+  async getShiftChecksByDriver(driverId: number): Promise<any[]> {
+    const { shiftChecks, shiftCheckItems } = await import('@shared/schema');
+    
+    const checks = await db.select({
+      shiftCheck: shiftChecks,
+      vehicle: vehicles
+    })
+      .from(shiftChecks)
+      .leftJoin(vehicles, eq(shiftChecks.vehicleId, vehicles.id))
+      .where(eq(shiftChecks.driverId, driverId))
+      .orderBy(desc(shiftChecks.createdAt))
+      .limit(30);
+    
+    // Get items for each check
+    const checksWithItems = await Promise.all(
+      checks.map(async (check) => {
+        const items = await db.select()
+          .from(shiftCheckItems)
+          .where(eq(shiftCheckItems.shiftCheckId, check.shiftCheck.id));
+        
+        return {
+          ...check.shiftCheck,
+          vehicle: check.vehicle,
+          items
+        };
+      })
+    );
+    
+     return checksWithItems;
+  }
+  
+  // Reminder operations
+  async createReminder(reminder: any): Promise<any> {
+    const { reminders } = await import('@shared/schema');
+    const [created] = await db.insert(reminders).values(reminder).returning();
+    return created;
+  }
+  
+  async getActiveReminders(companyId?: number): Promise<any[]> {
+    const { reminders } = await import('@shared/schema');
+    
+    if (companyId) {
+      return await db.select()
+        .from(reminders)
+        .where(
+          and(
+            eq(reminders.companyId, companyId),
+            sql`${reminders.status} IN ('ACTIVE', 'SNOOZED')`
+          )
+        )
+        .orderBy(reminders.dueDate);
+    }
+    
+    return await db.select()
+      .from(reminders)
+      .where(sql`${reminders.status} IN ('ACTIVE', 'SNOOZED')`)
+      .orderBy(reminders.dueDate);
+  }
+  
+  async getRemindersByVehicle(vehicleId: number): Promise<any[]> {
+    const { reminders } = await import('@shared/schema');
+    return await db.select()
+      .from(reminders)
+      .where(eq(reminders.vehicleId, vehicleId))
+      .orderBy(reminders.dueDate);
+  }
+  
+  async updateReminder(id: number, updates: Partial<any>): Promise<any | undefined> {
+    const { reminders } = await import('@shared/schema');
+    const [updated] = await db.update(reminders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(reminders.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async completeReminder(id: number, completedBy: number, notes?: string): Promise<any | undefined> {
+    const { reminders } = await import('@shared/schema');
+    const [updated] = await db.update(reminders)
+      .set({
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        completedBy,
+        completionNotes: notes || null,
+        updatedAt: new Date()
+      })
+      .where(eq(reminders.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async snoozeReminder(id: number, snoozedBy: number, snoozedUntil: Date, reason?: string): Promise<any | undefined> {
+    const { reminders } = await import('@shared/schema');
+    const [updated] = await db.update(reminders)
+      .set({
+        status: 'SNOOZED',
+        snoozedBy,
+        snoozedUntil,
+        snoozeReason: reason || null,
+        updatedAt: new Date()
+      })
+      .where(eq(reminders.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async dismissReminder(id: number): Promise<any | undefined> {
+    const { reminders } = await import('@shared/schema');
+    const [updated] = await db.update(reminders)
+      .set({
+        status: 'DISMISSED',
+        updatedAt: new Date()
+      })
+      .where(eq(reminders.id, id))
+      .returning();
+    return updated;
+  }
+  
+  async getCompany(companyId: number): Promise<any | undefined> {
+    return await this.getCompanyById(companyId);
+  }
+  
+  async getVehicle(vehicleId: number): Promise<any | undefined> {
+    return await this.getVehicleById(vehicleId);
+  }
 }
-
 export const storage = new DatabaseStorage();
