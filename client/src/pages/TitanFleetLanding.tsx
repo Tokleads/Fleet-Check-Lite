@@ -60,13 +60,14 @@ export default function TitanFleetLandingPage() {
                   Login
                 </span>
               </Link>
-              <button
-                onClick={scrollToPricing}
-                className="bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors"
-                data-testid="button-view-demo"
-              >
-                View demo
-              </button>
+              <Link href="/demo/dc-european">
+                <span
+                  className="bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors cursor-pointer inline-block"
+                  data-testid="button-view-demo"
+                >
+                  View demo
+                </span>
+              </Link>
             </div>
           </div>
         </div>
@@ -423,12 +424,14 @@ export default function TitanFleetLandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                className="w-full h-12 bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white font-semibold rounded-xl transition-colors"
-                data-testid="button-starter-subscribe"
-              >
-                Start Free Trial
-              </button>
+              <Link href="/demo/dc-european">
+                <span
+                  className="w-full h-12 bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white font-semibold rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+                  data-testid="button-starter-subscribe"
+                >
+                  Start Free Trial
+                </span>
+              </Link>
               <p className="text-center text-xs text-slate-500 mt-3">
                 Most fleets onboard in under a day
               </p>
@@ -467,12 +470,14 @@ export default function TitanFleetLandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                className="w-full h-12 bg-white text-[#5B6CFF] font-semibold rounded-xl hover:bg-blue-50 transition-colors"
-                data-testid="button-professional-subscribe"
-              >
-                Start Free Trial
-              </button>
+              <Link href="/demo/dc-european">
+                <span
+                  className="w-full h-12 bg-white text-[#5B6CFF] font-semibold rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center cursor-pointer"
+                  data-testid="button-professional-subscribe"
+                >
+                  Start Free Trial
+                </span>
+              </Link>
               <p className="text-center text-xs text-blue-200 mt-3">
                 Most fleets onboard in under a day
               </p>
@@ -508,12 +513,14 @@ export default function TitanFleetLandingPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                className="w-full h-12 bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white font-semibold rounded-xl transition-colors"
-                data-testid="button-enterprise-subscribe"
-              >
-                Start Free Trial
-              </button>
+              <Link href="/demo/dc-european">
+                <span
+                  className="w-full h-12 bg-[#5B6CFF] hover:bg-[#4A5AE8] text-white font-semibold rounded-xl transition-colors flex items-center justify-center cursor-pointer"
+                  data-testid="button-enterprise-subscribe"
+                >
+                  Start Free Trial
+                </span>
+              </Link>
               <p className="text-center text-xs text-slate-500 mt-3">
                 Most fleets onboard in under a day
               </p>
