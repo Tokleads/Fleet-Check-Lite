@@ -136,9 +136,6 @@ export default function TitanFleetLandingPage() {
                   className="w-full h-auto drop-shadow-2xl"
                   data-testid="hero-phone-mockup"
                 />
-                <div className="absolute -right-4 bottom-8 bg-white rounded-xl shadow-lg p-3 border border-slate-200">
-                  <p className="text-xs text-slate-600">Your branding. Your app.</p>
-                </div>
               </div>
             </motion.div>
           </div>
