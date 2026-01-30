@@ -17,7 +17,8 @@ import {
   type Timesheet, type InsertTimesheet,
   type StagnationAlert, type InsertStagnationAlert,
   type Notification, type InsertNotification,
-  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs, driverLocations, geofences, timesheets, stagnationAlerts, notifications
+  type ServiceHistory, type InsertServiceHistory,
+  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs, driverLocations, geofences, timesheets, stagnationAlerts, notifications, serviceHistory
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
@@ -81,6 +82,13 @@ export interface IStorage {
   setVehicleVOR(id: number, reason: string, notes?: string): Promise<Vehicle | undefined>;
   resolveVehicleVOR(id: number): Promise<Vehicle | undefined>;
   getVORVehicles(companyId: number): Promise<Vehicle[]>;
+  
+  // Service Interval Management
+  updateVehicleMileage(id: number, mileage: number): Promise<Vehicle | undefined>;
+  logService(service: any): Promise<any>;
+  getServiceHistory(vehicleId: number): Promise<any[]>;
+  getServiceDueVehicles(companyId: number): Promise<Vehicle[]>;
+  getVehicle(id: number): Promise<Vehicle | undefined>;
   
   // Fuel for company
   getFuelEntriesByCompany(companyId: number, days?: number): Promise<FuelEntry[]>;
@@ -484,6 +492,136 @@ export class DatabaseStorage implements IStorage {
         eq(vehicles.active, true)
       ))
       .orderBy(desc(vehicles.vorStartDate));
+  }
+
+  // Service Interval Management
+  async updateVehicleMileage(id: number, mileage: number): Promise<Vehicle | undefined> {
+    // Calculate next service due based on mileage
+    const vehicle = await this.getVehicle(id);
+    if (!vehicle) return undefined;
+
+    const updates: any = {
+      currentMileage: mileage
+    };
+
+    // Calculate next service mileage if interval is set
+    if (vehicle.serviceIntervalMiles) {
+      const lastServiceMileage = vehicle.lastServiceMileage || 0;
+      const milesSinceService = mileage - lastServiceMileage;
+      
+      if (milesSinceService >= vehicle.serviceIntervalMiles) {
+        // Service is overdue
+        updates.nextServiceMileage = mileage;
+      } else {
+        updates.nextServiceMileage = lastServiceMileage + vehicle.serviceIntervalMiles;
+      }
+    }
+
+    const [updated] = await db.update(vehicles)
+      .set(updates)
+      .where(eq(vehicles.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getVehicle(id: number): Promise<Vehicle | undefined> {
+    const [vehicle] = await db.select()
+      .from(vehicles)
+      .where(eq(vehicles.id, id));
+    return vehicle || undefined;
+  }
+
+  async logService(serviceData: any): Promise<ServiceHistory> {
+    const { vehicleId, serviceDate, serviceMileage, serviceType, serviceProvider, cost, workPerformed, performedBy } = serviceData;
+    
+    // Get vehicle to calculate next service
+    const vehicle = await this.getVehicle(vehicleId);
+    if (!vehicle) throw new Error("Vehicle not found");
+
+    // Calculate next service date (based on service interval months)
+    let nextServiceDue: Date | undefined;
+    if (vehicle.serviceIntervalMonths) {
+      nextServiceDue = new Date(serviceDate);
+      nextServiceDue.setMonth(nextServiceDue.getMonth() + vehicle.serviceIntervalMonths);
+    }
+
+    // Calculate next service mileage
+    let nextServiceMileage: number | undefined;
+    if (vehicle.serviceIntervalMiles) {
+      nextServiceMileage = serviceMileage + vehicle.serviceIntervalMiles;
+    }
+
+    // Insert service record
+    const [service] = await db.insert(serviceHistory)
+      .values({
+        vehicleId,
+        companyId: vehicle.companyId,
+        serviceDate,
+        serviceMileage,
+        serviceType,
+        serviceProvider,
+        cost,
+        workPerformed,
+        nextServiceDue,
+        nextServiceMileage,
+        performedBy
+      })
+      .returning();
+
+    // Update vehicle with last service info and next service due
+    await db.update(vehicles)
+      .set({
+        lastServiceDate: serviceDate,
+        lastServiceMileage: serviceMileage,
+        nextServiceDue,
+        nextServiceMileage,
+        currentMileage: serviceMileage
+      })
+      .where(eq(vehicles.id, vehicleId));
+
+    return service;
+  }
+
+  async getServiceHistory(vehicleId: number): Promise<ServiceHistory[]> {
+    return await db.select()
+      .from(serviceHistory)
+      .where(eq(serviceHistory.vehicleId, vehicleId))
+      .orderBy(desc(serviceHistory.serviceDate));
+  }
+
+  async getServiceDueVehicles(companyId: number): Promise<Vehicle[]> {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+    // Get vehicles where service is due within 30 days (by date or mileage)
+    const allVehicles = await db.select()
+      .from(vehicles)
+      .where(and(
+        eq(vehicles.companyId, companyId),
+        eq(vehicles.active, true)
+      ));
+
+    // Filter vehicles that are due for service
+    return allVehicles.filter(vehicle => {
+      // Check if service is due by date
+      if (vehicle.nextServiceDue) {
+        const dueDate = new Date(vehicle.nextServiceDue);
+        if (dueDate <= thirtyDaysFromNow) {
+          return true;
+        }
+      }
+
+      // Check if service is due by mileage (within 500 miles)
+      if (vehicle.nextServiceMileage && vehicle.currentMileage) {
+        const milesUntilService = vehicle.nextServiceMileage - vehicle.currentMileage;
+        if (milesUntilService <= 500) {
+          return true;
+        }
+      }
+
+      return false;
+    });
   }
 
   // Fuel for company
@@ -1362,10 +1500,6 @@ export class DatabaseStorage implements IStorage {
   
   async getCompany(companyId: number): Promise<any | undefined> {
     return await this.getCompanyById(companyId);
-  }
-  
-  async getVehicle(vehicleId: number): Promise<any | undefined> {
-    return await this.getVehicleById(vehicleId);
   }
 }
 export const storage = new DatabaseStorage();

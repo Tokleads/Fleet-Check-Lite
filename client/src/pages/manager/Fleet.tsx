@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { ManagerLayout } from "./ManagerLayout";
 import { session } from "@/lib/session";
 import { VORDialog } from "@/components/VORDialog";
+import { ServiceDialog } from "@/components/ServiceDialog";
+import { ServiceHistoryDialog } from "@/components/ServiceHistoryDialog";
 import { 
   Truck,
   Plus,
@@ -16,7 +18,9 @@ import {
   ArrowUpRight,
   Pencil,
   Power,
-  Trash2
+  Trash2,
+  Wrench,
+  FileText
 } from "lucide-react";
 
 interface LicenseInfo {
@@ -41,6 +45,8 @@ export default function ManagerFleet() {
   const [editingVehicle, setEditingVehicle] = useState<any | null>(null);
   const [deletingVehicle, setDeletingVehicle] = useState<any | null>(null);
   const [vorVehicle, setVorVehicle] = useState<any | null>(null);
+  const [serviceVehicle, setServiceVehicle] = useState<any | null>(null);
+  const [serviceHistoryVehicle, setServiceHistoryVehicle] = useState<any | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [addFormData, setAddFormData] = useState({ vrm: '', make: '', model: '', fleetNumber: '', vehicleCategory: 'HGV', motDue: '' });
   const [addError, setAddError] = useState<string | null>(null);
@@ -435,6 +441,26 @@ export default function ManagerFleet() {
                             {vehicle.vorStatus ? 'Return to Service' : 'Set Off Road'}
                           </button>
                           <button
+                            onClick={() => {
+                              setServiceVehicle(vehicle);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          >
+                            <Wrench className="h-4 w-4 text-blue-500" />
+                            Log Service
+                          </button>
+                          <button
+                            onClick={() => {
+                              setServiceHistoryVehicle(vehicle);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4 text-slate-500" />
+                            Service History
+                          </button>
+                          <button
                             onClick={() => toggleActiveMutation.mutate({ id: vehicle.id, active: !vehicle.active })}
                             className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                             data-testid={`button-toggle-vehicle-${vehicle.id}`}
@@ -473,6 +499,53 @@ export default function ManagerFleet() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Service Due Badge */}
+                  {(() => {
+                    const today = new Date();
+                    const thirtyDaysFromNow = new Date();
+                    thirtyDaysFromNow.setDate(today.getDate() + 30);
+                    
+                    const isServiceDueSoon = vehicle.nextServiceDue && new Date(vehicle.nextServiceDue) <= thirtyDaysFromNow;
+                    const isServiceOverdue = vehicle.nextServiceDue && new Date(vehicle.nextServiceDue) < today;
+                    const isMileageDue = vehicle.nextServiceMileage && vehicle.currentMileage && 
+                      (vehicle.nextServiceMileage - vehicle.currentMileage) <= 500;
+                    const isMileageOverdue = vehicle.nextServiceMileage && vehicle.currentMileage && 
+                      vehicle.currentMileage >= vehicle.nextServiceMileage;
+                    
+                    if (isServiceOverdue || isMileageOverdue) {
+                      return (
+                        <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-red-600" />
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-red-900">Service Overdue</p>
+                              <p className="text-xs text-red-700">
+                                {isServiceOverdue && `Due ${new Date(vehicle.nextServiceDue).toLocaleDateString('en-GB')}`}
+                                {isMileageOverdue && ` at ${vehicle.nextServiceMileage?.toLocaleString()} miles`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else if (isServiceDueSoon || isMileageDue) {
+                      return (
+                        <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-blue-600" />
+                            <div className="flex-1">
+                              <p className="text-xs font-semibold text-blue-900">Service Due Soon</p>
+                              <p className="text-xs text-blue-700">
+                                {isServiceDueSoon && `Due ${new Date(vehicle.nextServiceDue).toLocaleDateString('en-GB')}`}
+                                {isMileageDue && ` at ${vehicle.nextServiceMileage?.toLocaleString()} miles`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                     <div className="flex items-center gap-1.5">
@@ -567,6 +640,22 @@ export default function ManagerFleet() {
           <VORDialog
             vehicle={vorVehicle}
             onClose={() => setVorVehicle(null)}
+          />
+        )}
+
+        {/* Service Dialog */}
+        {serviceVehicle && (
+          <ServiceDialog
+            vehicle={serviceVehicle}
+            onClose={() => setServiceVehicle(null)}
+          />
+        )}
+
+        {/* Service History Dialog */}
+        {serviceHistoryVehicle && (
+          <ServiceHistoryDialog
+            vehicle={serviceHistoryVehicle}
+            onClose={() => setServiceHistoryVehicle(null)}
           />
         )}
       </div>

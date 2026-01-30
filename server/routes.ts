@@ -658,6 +658,98 @@ export async function registerRoutes(
     }
   });
 
+  // Service Interval Management - Update vehicle mileage
+  app.post("/api/manager/vehicles/:id/mileage", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const { mileage } = req.body;
+      
+      if (!mileage || mileage < 0) {
+        return res.status(400).json({ error: "Invalid mileage" });
+      }
+      
+      const updated = await storage.updateVehicleMileage(vehicleId, mileage);
+      if (!updated) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating mileage:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Service Interval Management - Log service
+  app.post("/api/manager/vehicles/:id/service", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const { serviceDate, serviceMileage, serviceType, serviceProvider, cost, workPerformed, performedBy } = req.body;
+      
+      if (!serviceDate || !serviceMileage || !serviceType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      const service = await storage.logService({
+        vehicleId,
+        serviceDate: new Date(serviceDate),
+        serviceMileage,
+        serviceType,
+        serviceProvider,
+        cost,
+        workPerformed,
+        performedBy
+      });
+      
+      // Audit log: Service logged
+      const { logAudit } = await import("./auditService");
+      const vehicle = await storage.getVehicle(vehicleId);
+      if (vehicle) {
+        await logAudit({
+          userId: performedBy,
+          companyId: vehicle.companyId,
+          action: "SERVICE_LOGGED",
+          entityType: "vehicle",
+          entityId: vehicleId,
+          details: `Service logged for ${vehicle.vrm}: ${serviceType} at ${serviceMileage} miles`
+        });
+      }
+      
+      res.json(service);
+    } catch (error) {
+      console.error("Error logging service:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get service history for vehicle
+  app.get("/api/manager/vehicles/:id/service-history", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const history = await storage.getServiceHistory(vehicleId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching service history:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get vehicles due for service
+  app.get("/api/manager/vehicles/service-due", async (req, res) => {
+    try {
+      const { companyId } = req.query;
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      const dueVehicles = await storage.getServiceDueVehicles(Number(companyId));
+      res.json(dueVehicles);
+    } catch (error) {
+      console.error("Error fetching service due vehicles:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.delete("/api/manager/vehicles/:id", async (req, res) => {
     try {
       const vehicleId = Number(req.params.id);

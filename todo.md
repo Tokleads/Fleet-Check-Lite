@@ -11,4 +11,17 @@
 - [x] Add VOR indicators to vehicle list
 - [ ] Add VOR filter to vehicle list
 - [ ] Create VOR report page
-- [ ] Test VOR workflow end-to-end
+- [x] Test VOR workflow end-to-end
+
+## Service Interval System
+
+- [x] Update database schema with service interval fields
+- [x] Create service schedule configuration table
+- [x] Create backend API for service interval management
+- [x] Build service interval configuration UI
+- [x] Add service due calculation logic
+- [x] Create service history tracking
+- [x] Add service due dashboard widget
+- [x] Add service due alerts to vehicle list
+- [ ] Create service reminder notifications
+- [ ] Test service interval workflow end-to-end

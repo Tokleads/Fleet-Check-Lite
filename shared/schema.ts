@@ -89,6 +89,15 @@ export const vehicles = pgTable("vehicles", {
   vorNotes: text("vor_notes"), // Additional notes
   vorResolvedDate: timestamp("vor_resolved_date"), // When vehicle returned to service
   
+  // Service Interval Management
+  currentMileage: integer("current_mileage").default(0), // Current odometer reading
+  lastServiceDate: timestamp("last_service_date"), // Date of last service
+  lastServiceMileage: integer("last_service_mileage"), // Mileage at last service
+  serviceIntervalMiles: integer("service_interval_miles").default(10000), // Service every X miles
+  serviceIntervalMonths: integer("service_interval_months").default(12), // Service every X months
+  nextServiceDue: timestamp("next_service_due"), // Calculated next service date
+  nextServiceMileage: integer("next_service_mileage"), // Calculated next service mileage
+  
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
@@ -584,3 +593,25 @@ export const notificationTokens = pgTable("notification_tokens", {
 export const insertNotificationTokenSchema = createInsertSchema(notificationTokens).omit({ id: true, createdAt: true });
 export type NotificationToken = typeof notificationTokens.$inferSelect;
 export type InsertNotificationToken = z.infer<typeof insertNotificationTokenSchema>;
+
+// Service History - Track all vehicle services
+export const serviceHistory = pgTable("service_history", {
+  id: serial("id").primaryKey(),
+  vehicleId: integer("vehicle_id").references(() => vehicles.id).notNull(),
+  companyId: integer("company_id").references(() => companies.id).notNull(),
+  serviceDate: timestamp("service_date").notNull(),
+  serviceMileage: integer("service_mileage").notNull(),
+  serviceType: varchar("service_type", { length: 50 }).notNull(), // Annual Service | Interim Service | Major Service | Oil Change | Brake Service | etc.
+  serviceProvider: text("service_provider"), // Workshop name
+  cost: integer("cost"), // Cost in pence
+  workPerformed: text("work_performed"), // Description of work
+  nextServiceDue: timestamp("next_service_due"), // Calculated next service date
+  nextServiceMileage: integer("next_service_mileage"), // Calculated next service mileage
+  invoiceUrl: text("invoice_url"), // Link to invoice/receipt
+  performedBy: integer("performed_by").references(() => users.id), // Manager who logged the service
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+export const insertServiceHistorySchema = createInsertSchema(serviceHistory).omit({ id: true, createdAt: true });
+export type ServiceHistory = typeof serviceHistory.$inferSelect;
+export type InsertServiceHistory = z.infer<typeof insertServiceHistorySchema>;
