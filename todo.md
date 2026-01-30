@@ -299,3 +299,142 @@ The project already has:
 - [ ] Optimize bundle size
 - [ ] Add performance monitoring
 - [ ] Implement database connection pooling
+
+
+## Multi-Tenant SaaS Platform (Self-Service Management)
+
+### Company Self-Service - Depot/Geofence Management
+- [x] Create depot management page in Settings
+- [x] Add interactive map for setting depot locations (click to place)
+- [x] Allow entering coordinates manually (lat/lng)
+- [x] Add depot name input field
+- [x] Add configurable radius slider (50m - 500m, default 250m)
+- [x] Add enable/disable toggle per depot
+- [x] Build depot list view with edit/delete actions
+- [ ] Add depot activity stats (total clock-ins today/week)
+- [ ] Implement depot search by name
+- [ ] Add depot color coding on map
+- [ ] Test multi-company depot isolation
+
+### Company Self-Service - Driver Management
+- [ ] Create driver management page (add/edit/remove)
+- [ ] Add driver form (name, email, phone, license number)
+- [ ] Add vehicle assignment dropdown
+- [ ] Add driver photo upload
+- [ ] Add driver status toggle (active/inactive)
+- [ ] Build driver list with search/filter
+- [ ] Add driver performance stats preview
+- [ ] Implement bulk driver import (CSV)
+- [ ] Add driver invitation email system
+- [ ] Test driver-company isolation
+
+### Company Self-Service - Vehicle/Fleet Management
+- [ ] Create vehicle management page (add/edit/remove)
+- [ ] Add vehicle form (VRM, make, model, year, type)
+- [ ] Add vehicle photo upload
+- [ ] Add MOT expiry date picker
+- [ ] Add insurance expiry date picker
+- [ ] Add service interval configuration
+- [ ] Build vehicle list with search/filter
+- [ ] Add vehicle status indicators (active/maintenance/decommissioned)
+- [ ] Implement bulk vehicle import (CSV)
+- [ ] Add vehicle assignment to driver
+- [ ] Test vehicle-company isolation
+
+### Company Self-Service - Document Management
+- [ ] Create documents library page
+- [ ] Add document upload with drag-and-drop
+- [ ] Add document categories (Insurance, MOT, Manuals, Policies)
+- [ ] Add document tagging system
+- [ ] Build document search/filter
+- [ ] Add document preview (PDF viewer)
+- [ ] Add document expiry date tracking
+- [ ] Implement document sharing with drivers
+- [ ] Add document version history
+- [ ] Test document-company isolation
+
+### Live Tracking Dashboard (Tactical Command Center UI)
+- [ ] Redesign dashboard with Titan Navy theme (#0F172A)
+- [ ] Add full-screen map view with vehicle markers
+- [ ] Implement real-time GPS position updates (5-min refresh)
+- [ ] Add vehicle info cards on map (speed, heading, status)
+- [ ] Add geofence circles visualization on map
+- [ ] Implement vehicle clustering for multiple units
+- [ ] Add map controls (zoom, center, satellite view)
+- [ ] Add vehicle filtering (active/idle/stagnant)
+- [ ] Build historical route playback
+- [ ] Add "Follow Vehicle" mode
+- [ ] Test with multiple companies simultaneously
+
+### Titan Intelligence Sidebar (Real-Time Alerts)
+- [ ] Create persistent right sidebar for alerts
+- [ ] Add stagnation alerts with RED indicator
+- [ ] Add geofence entry/exit notifications
+- [ ] Add low fuel/AdBlue warnings
+- [ ] Add missed inspection alerts
+- [ ] Add driver safety score warnings
+- [ ] Implement alert priority system (low/medium/high/critical)
+- [ ] Add alert acknowledgment workflow
+- [ ] Add alert history log
+- [ ] Implement alert sound notifications
+- [ ] Test alert delivery across companies
+
+### Driver Safety Scoring System
+- [ ] Create safety score calculation algorithm
+- [ ] Track speeding incidents (>70mph)
+- [ ] Track harsh braking events
+- [ ] Track rapid acceleration
+- [ ] Track idle time percentage
+- [ ] Calculate weekly safety score (0-100)
+- [ ] Build driver safety dashboard
+- [ ] Add safety score trends chart
+- [ ] Implement safety score email reports
+- [ ] Add safety score leaderboard
+- [ ] Test scoring accuracy
+
+### Push Notifications (FCM Integration)
+- [ ] Set up Firebase Cloud Messaging project
+- [ ] Add FCM token registration in driver app
+- [ ] Build notification sending service
+- [ ] Implement fleet-wide broadcast
+- [ ] Implement individual driver messaging
+- [ ] Add notification priority levels
+- [ ] Build notification history
+- [ ] Add notification read receipts
+- [ ] Test notification delivery on iOS/Android
+- [ ] Add notification preferences per driver
+
+### Multi-Tenancy Security & Isolation
+- [ ] Audit all API endpoints for companyId filtering
+- [ ] Add middleware to enforce company-level access control
+- [ ] Test data isolation between companies
+- [ ] Add company-level rate limiting
+- [ ] Implement company usage analytics
+- [ ] Add company billing/subscription tracking
+- [ ] Test concurrent multi-company operations
+- [ ] Add company data export functionality
+- [ ] Implement company account deletion workflow
+
+### Onboarding & Setup Wizard
+- [ ] Create company registration flow
+- [ ] Build setup wizard (Step 1: Add first depot)
+- [ ] Build setup wizard (Step 2: Add first vehicle)
+- [ ] Build setup wizard (Step 3: Invite first driver)
+- [ ] Add welcome email with setup guide
+- [ ] Add interactive product tour
+- [ ] Create video tutorials for key features
+- [ ] Add help center/knowledge base
+- [ ] Test onboarding flow end-to-end
+
+
+### Titan Intelligence Sidebar (Real-time Alerts)
+- [x] Create Titan Intelligence sidebar component
+- [x] Show real-time stagnation alerts (30+ min stationary)
+- [x] Add alert priority levels (low/medium/high/critical)
+- [x] Add color-coded alert cards with icons
+- [x] Add acknowledge button for each alert
+- [x] Add collapse/expand sidebar toggle
+- [x] Auto-refresh alerts every 30 seconds
+- [x] Show unacknowledged alert count badge
+- [x] Add "All Clear" state when no alerts
+- [x] Integrate sidebar into ManagerLayout

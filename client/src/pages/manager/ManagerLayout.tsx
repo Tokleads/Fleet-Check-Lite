@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
+import { TitanIntelligenceSidebar } from "@/components/TitanIntelligenceSidebar";
 
 const navItems = [
   { path: "/manager", icon: LayoutDashboard, label: "Dashboard" },
@@ -51,7 +52,7 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/50 flex">
+    <div className="min-h-screen bg-slate-100/50 flex relative">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-[72px]'} bg-white border-r border-slate-200/80 flex flex-col transition-all duration-300 ease-out relative`}>
         {/* Logo */}
@@ -120,7 +121,7 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 mr-80">
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-6 sticky top-0 z-10">
           <div className="flex items-center gap-4">
@@ -163,6 +164,9 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Titan Intelligence Sidebar */}
+      <TitanIntelligenceSidebar />
     </div>
   );
 }
