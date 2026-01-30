@@ -599,10 +599,12 @@ export default function TitanFleetLandingPage() {
               <div className="bg-slate-100 rounded px-3 py-1.5 text-xs font-bold text-slate-600">Apple Pay</div>
               <div className="bg-slate-100 rounded px-3 py-1.5 text-xs font-bold text-slate-600">GPay</div>
             </div>
-            <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
-              <ChevronRight className="h-4 w-4" />
-              Need approval? Forward this page to procurement
-            </p>
+            <Link href="/procurement-faq">
+              <span className="text-[#5B6CFF] hover:text-[#4A5AE8] text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                <ChevronRight className="h-4 w-4" />
+                Need approval? Forward this page to procurement
+              </span>
+            </Link>
           </motion.div>
         </div>
       </section>

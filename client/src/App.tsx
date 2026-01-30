@@ -33,6 +33,7 @@ import PayRates from './pages/manager/PayRates';
 import Performance from "@/pages/admin/Performance";
 import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
 import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
+import ProcurementFAQ from "@/pages/ProcurementFAQ";
 import NotFound from "@/pages/not-found";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -70,6 +71,7 @@ function Router() {
       <Route path="/admin/performance" component={Performance} />
       <Route path="/demo/dc-european" component={DCEuropeanDemo} />
       <Route path="/demo/trucker-tim" component={TruckerTimDemo} />
+      <Route path="/procurement-faq" component={ProcurementFAQ} />
       <Route component={NotFound} />
     </Switch>
   );
