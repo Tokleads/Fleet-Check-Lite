@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/use-debounce';
 import { ManagerLayout } from './ManagerLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,7 @@ export default function FleetDocuments() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -134,9 +136,51 @@ export default function FleetDocuments() {
 
   // Load data on mount and when filters change
   useEffect(() => {
-    fetchDocuments();
-    fetchStats();
-  }, [categoryFilter, statusFilter, searchQuery]);
+    const controller = new AbortController();
+    
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          companyId: companyId.toString(),
+          ...(categoryFilter !== 'all' && { category: categoryFilter }),
+          ...(statusFilter !== 'all' && { status: statusFilter }),
+          ...(debouncedSearchQuery && { search: debouncedSearchQuery })
+        });
+        
+        const [docsResponse, statsResponse] = await Promise.all([
+          fetch(`/api/fleet-documents?${params}`, { signal: controller.signal }),
+          fetch(`/api/fleet-documents/stats?companyId=${companyId}`, { signal: controller.signal })
+        ]);
+        
+        if (!docsResponse.ok || !statsResponse.ok) {
+          throw new Error('Failed to fetch data');
+        }
+        
+        const [docsData, statsData] = await Promise.all([
+          docsResponse.json(),
+          statsResponse.json()
+        ]);
+        
+        setDocuments(docsData.documents);
+        setStats(statsData);
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          toast({
+            title: 'Error',
+            description: 'Failed to load documents',
+            variant: 'destructive'
+          });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+    
+    return () => controller.abort();
+  }, [categoryFilter, statusFilter, debouncedSearchQuery]);
 
   // Handle file upload
   const handleUpload = async () => {

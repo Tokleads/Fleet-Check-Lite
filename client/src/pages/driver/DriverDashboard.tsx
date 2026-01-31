@@ -42,10 +42,37 @@ export default function DriverDashboard() {
   const hasUnreadDocs = unreadDocs && unreadDocs.length > 0;
 
   useEffect(() => {
+    let mounted = true;
+    
+    const loadData = async () => {
+      if (!company || !user) return;
+      
+      try {
+        const [recents, inspectionData, fuelData] = await Promise.all([
+          api.getRecentVehicles(company.id, user.id, 3),
+          api.getInspections(company.id, user.id, 7),
+          api.getFuelEntries(company.id, user.id, 7)
+        ]);
+        
+        if (mounted) {
+          setRecentVehicles(recents);
+          setInspections(inspectionData);
+          setFuelEntries(fuelData);
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error('Failed to load dashboard data:', error);
+        }
+      }
+    };
+    
     if (company && user) {
-      loadRecents();
-      loadActivity();
+      loadData();
     }
+    
+    return () => {
+      mounted = false;
+    };
   }, [company, user]);
 
   const loadRecents = async () => {

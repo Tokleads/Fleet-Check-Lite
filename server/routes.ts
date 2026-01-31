@@ -37,17 +37,19 @@ export async function registerRoutes(
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
-  });
-
-  // Get all vehicles for company
+  });  // Get all vehicles for a company
   app.get("/api/vehicles", async (req, res) => {
     try {
-      const { companyId } = req.query;
+      const { companyId, limit = '50', offset = '0' } = req.query;
       if (!companyId) {
         return res.status(400).json({ error: "Missing companyId" });
       }
       
-      const vehicleList = await storage.getVehiclesByCompany(Number(companyId));
+      const vehicleList = await storage.getVehiclesByCompany(
+        Number(companyId),
+        Number(limit),
+        Number(offset)
+      );
       res.json(vehicleList);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });

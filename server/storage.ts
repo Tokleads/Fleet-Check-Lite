@@ -34,7 +34,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   
   // Vehicle operations
-  getVehiclesByCompany(companyId: number): Promise<Vehicle[]>;
+  getVehiclesByCompany(companyId: number, limit?: number, offset?: number): Promise<Vehicle[]>;
   searchVehicles(companyId: number, query: string): Promise<Vehicle[]>;
   getVehicleById(id: number): Promise<Vehicle | undefined>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
@@ -197,13 +197,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vehicle
-  async getVehiclesByCompany(companyId: number): Promise<Vehicle[]> {
+  async getVehiclesByCompany(companyId: number, limit: number = 50, offset: number = 0): Promise<Vehicle[]> {
     return await db.select().from(vehicles)
       .where(and(
         eq(vehicles.companyId, companyId),
         eq(vehicles.active, true)
       ))
-      .orderBy(vehicles.vrm);
+      .orderBy(vehicles.vrm)
+      .limit(limit)
+      .offset(offset);
   }
 
   async searchVehicles(companyId: number, query: string): Promise<Vehicle[]> {

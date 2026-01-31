@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useDebounce } from '@/hooks/use-debounce';
 import { ManagerLayout } from './ManagerLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -158,6 +159,7 @@ function UserRolesContent() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [roleFilter, setRoleFilter] = useState('all');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -170,7 +172,7 @@ function UserRolesContent() {
       const params = new URLSearchParams({
         companyId: companyId.toString(),
         ...(roleFilter !== 'all' && { role: roleFilter }),
-        ...(searchQuery && { search: searchQuery })
+        ...(debouncedSearchQuery && { search: debouncedSearchQuery })
       });
       
       const response = await fetch(`/api/user-roles?${params}`);
@@ -192,7 +194,7 @@ function UserRolesContent() {
   // Load users on mount and when filters change
   useEffect(() => {
     fetchUsers();
-  }, [roleFilter, searchQuery]);
+  }, [roleFilter, debouncedSearchQuery]);
   
   const getRoleBadge = (role: string) => {
     const roleInfo = ROLES.find(r => r.value === role);

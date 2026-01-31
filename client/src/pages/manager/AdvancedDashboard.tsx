@@ -77,6 +77,8 @@ export default function AdvancedDashboard() {
   
   // Fetch all dashboard data
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -91,13 +93,13 @@ export default function AdvancedDashboard() {
           defectRes,
           activityRes
         ] = await Promise.all([
-          fetch(`/api/dashboard/kpis?companyId=${companyId}`),
-          fetch(`/api/dashboard/fleet-overview?companyId=${companyId}`),
-          fetch(`/api/dashboard/cost-analysis?companyId=${companyId}`),
-          fetch(`/api/dashboard/compliance?companyId=${companyId}`),
-          fetch(`/api/dashboard/driver-activity?companyId=${companyId}`),
-          fetch(`/api/dashboard/defect-trends?companyId=${companyId}`),
-          fetch(`/api/dashboard/recent-activity?companyId=${companyId}`)
+          fetch(`/api/dashboard/kpis?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/fleet-overview?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/cost-analysis?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/compliance?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/driver-activity?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/defect-trends?companyId=${companyId}`, { signal: controller.signal }),
+          fetch(`/api/dashboard/recent-activity?companyId=${companyId}`, { signal: controller.signal })
         ]);
         
         // Parse responses
@@ -117,18 +119,22 @@ export default function AdvancedDashboard() {
         setDriverActivityData(driverData.data);
         setDefectTrendData(defectData.data);
         setRecentActivity(activityData.activities);
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load dashboard data',
-          variant: 'destructive'
-        });
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          toast({
+            title: 'Error',
+            description: 'Failed to load dashboard data',
+            variant: 'destructive'
+          });
+        }
       } finally {
         setLoading(false);
       }
     };
     
     fetchDashboardData();
+    
+    return () => controller.abort();
   }, [companyId]);
 
   if (loading) {
