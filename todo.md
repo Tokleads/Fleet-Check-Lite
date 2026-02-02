@@ -390,3 +390,20 @@
 - [ ] Verify notifications appear in dashboard (requires test)
 - [ ] Verify notifications appear in notification center (requires test)
 - [x] Update documentation to reflect in-app notifications
+
+## Flexible Wage Calculation System
+
+- [x] Design pay rate schema (base rate, night rate, weekend rate, bank holiday rate)
+- [x] Create database tables (payRates, bankHolidays, wageCalculations)
+- [x] Create wageCalculationService.ts with time-based rate logic
+- [x] Implement night shift detection (configurable hours, default 10 PM - 6 AM)
+- [x] Implement weekend detection (Saturday/Sunday)
+- [x] Implement bank holiday detection
+- [x] Calculate hours breakdown by rate type
+- [x] Update CSV export with detailed wage breakdown columns
+- [x] Add pay rate management UI for managers (/manager/pay-rates)
+- [x] Add API endpoints for pay rates and bank holidays
+- [x] Add navigation link to ManagerLayout
+- [x] Create comprehensive documentation (WAGE_CALCULATION_SYSTEM.md)
+- [ ] Test wage calculations with real data (after deployment)
+- [ ] Run database migration (db:push) in production

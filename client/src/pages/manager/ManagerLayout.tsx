@@ -23,7 +23,8 @@ import {
   BarChart3,
   Users,
   FolderOpen,
-  Activity
+  Activity,
+  DollarSign
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
@@ -34,6 +35,7 @@ const navItems = [
   { path: "/manager/advanced-dashboard", icon: BarChart3, label: "Analytics" },
   { path: "/manager/live-tracking", icon: Navigation, label: "Live Tracking" },
   { path: "/manager/timesheets", icon: Clock, label: "Timesheets" },
+  { path: "/manager/pay-rates", icon: DollarSign, label: "Pay Rates" },
   { path: "/manager/titan-command", icon: Radio, label: "Titan Command" },
   { path: "/manager/geofences", icon: MapPin, label: "Geofences" },
   { path: "/manager/inspections", icon: ClipboardCheck, label: "Inspections" },

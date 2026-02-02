@@ -2223,6 +2223,135 @@ export async function registerRoutes(
     }
   });
   
+  // ==================== PAY RATES & WAGE CALCULATIONS ====================
+  
+  // Get pay rates for company
+  app.get("/api/pay-rates/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { initializeDefaultPayRates } = await import('./wageCalculationService');
+      const { db } = await import('./db');
+      const { payRates } = await import('../shared/schema');
+      const { eq, and, isNull } = await import('drizzle-orm');
+      
+      // Get all pay rates for company
+      let rates = await db.select()
+        .from(payRates)
+        .where(eq(payRates.companyId, companyId));
+      
+      // If no rates exist, initialize default
+      if (rates.length === 0) {
+        await initializeDefaultPayRates(companyId);
+        rates = await db.select()
+          .from(payRates)
+          .where(eq(payRates.companyId, companyId));
+      }
+      
+      res.json(rates);
+    } catch (error) {
+      console.error("Failed to fetch pay rates:", error);
+      res.status(500).json({ error: "Failed to fetch pay rates" });
+    }
+  });
+  
+  // Create or update pay rate
+  app.post("/api/pay-rates", async (req, res) => {
+    try {
+      const { db } = await import('./db');
+      const { payRates } = await import('../shared/schema');
+      
+      const [newRate] = await db.insert(payRates).values(req.body).returning();
+      res.json(newRate);
+    } catch (error) {
+      console.error("Failed to create pay rate:", error);
+      res.status(500).json({ error: "Failed to create pay rate" });
+    }
+  });
+  
+  // Update pay rate
+  app.patch("/api/pay-rates/:id", async (req, res) => {
+    try {
+      const { db } = await import('./db');
+      const { payRates } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const [updated] = await db.update(payRates)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(payRates.id, Number(req.params.id)))
+        .returning();
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update pay rate:", error);
+      res.status(500).json({ error: "Failed to update pay rate" });
+    }
+  });
+  
+  // Get bank holidays for company
+  app.get("/api/bank-holidays/:companyId", async (req, res) => {
+    try {
+      const { db } = await import('./db');
+      const { bankHolidays } = await import('../shared/schema');
+      const { eq } = await import('drizzle-orm');
+      
+      const holidays = await db.select()
+        .from(bankHolidays)
+        .where(eq(bankHolidays.companyId, Number(req.params.companyId)));
+      
+      res.json(holidays);
+    } catch (error) {
+      console.error("Failed to fetch bank holidays:", error);
+      res.status(500).json({ error: "Failed to fetch bank holidays" });
+    }
+  });
+  
+  // Add bank holiday
+  app.post("/api/bank-holidays", async (req, res) => {
+    try {
+      const { db } = await import('./db');
+      const { bankHolidays } = await import('../shared/schema');
+      
+      const [newHoliday] = await db.insert(bankHolidays).values(req.body).returning();
+      res.json(newHoliday);
+    } catch (error) {
+      console.error("Failed to add bank holiday:", error);
+      res.status(500).json({ error: "Failed to add bank holiday" });
+    }
+  });
+  
+  // Initialize UK bank holidays for year
+  app.post("/api/bank-holidays/init-uk/:companyId/:year", async (req, res) => {
+    try {
+      const { addUKBankHolidays } = await import('./wageCalculationService');
+      await addUKBankHolidays(Number(req.params.companyId), Number(req.params.year));
+      res.json({ success: true, message: "UK bank holidays added" });
+    } catch (error) {
+      console.error("Failed to initialize bank holidays:", error);
+      res.status(500).json({ error: "Failed to initialize bank holidays" });
+    }
+  });
+  
+  // Calculate wages for timesheet
+  app.post("/api/wages/calculate/:timesheetId", async (req, res) => {
+    try {
+      const { calculateWages } = await import('./wageCalculationService');
+      const { companyId, driverId, arrivalTime, departureTime } = req.body;
+      
+      const wages = await calculateWages(
+        Number(req.params.timesheetId),
+        companyId,
+        driverId,
+        new Date(arrivalTime),
+        new Date(departureTime)
+      );
+      
+      res.json(wages);
+    } catch (error) {
+      console.error("Failed to calculate wages:", error);
+      res.status(500).json({ error: "Failed to calculate wages" });
+    }
+  });
+  
   // ==================== STAGNATION ALERTS ====================
   
   // Get stagnation alerts for company
