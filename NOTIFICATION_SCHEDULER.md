@@ -9,6 +9,11 @@ The Titan Fleet notification scheduler automatically sends compliance alerts to 
 
 The scheduler runs automatically every day at 8:00 AM and can also be triggered manually via API.
 
+**Notification Channels:**
+- ✅ **In-App Notifications** - Appear in dashboard notification center with bell icon
+- ✅ **Email Notifications** - Sent to manager's email address
+- ⏳ **SMS Notifications** - Not implemented (in-app preferred)
+
 ---
 
 ## How It Works
@@ -30,9 +35,11 @@ For each notification type, the scheduler:
 
 1. **Fetches all companies** from the database
 2. **Checks notification preferences** for each company
-3. **Finds vehicles** with upcoming expiry dates
-4. **Calculates days until expiry**
-5. **Sends email notifications** to configured recipients
+3. **Finds all managers** for each company
+4. **Finds vehicles** with upcoming expiry dates
+5. **Calculates days until expiry**
+6. **Sends in-app notifications** to all managers via pushNotificationService
+7. **Sends email notifications** to manager email addresses
 
 ### Example: Service Due Notifications
 
@@ -46,16 +53,27 @@ const vehicles = await db.select()
   .from(vehicles)
   .where(lte(vehicles.nextServiceDue, thresholdDate));
 
-// Send notification for each vehicle
+// Get all managers for this company
+const managers = await db.select()
+  .from(users)
+  .where(and(
+    eq(users.companyId, company.id),
+    eq(users.role, 'manager')
+  ));
+
+// Send notification to each manager
 for (const vehicle of vehicles) {
-  await sendNotification({
-    companyId: company.id,
-    vehicleId: vehicle.id,
-    type: 'SERVICE_DUE',
-    recipient: 'manager@company.com',
-    subject: `Service Due Alert - ${vehicle.vrm}`,
-    message: `Vehicle ${vehicle.vrm} service is due in ${daysUntilDue} days`
-  });
+  for (const manager of managers) {
+    await sendNotification({
+      companyId: company.id,
+      userId: manager.id, // ← Enables in-app notification
+      vehicleId: vehicle.id,
+      type: 'SERVICE_DUE',
+      recipient: manager.email,
+      subject: `Service Due Alert - ${vehicle.vrm}`,
+      message: `Vehicle ${vehicle.vrm} service is due in ${daysUntilDue} days`
+    });
+  }
 }
 ```
 
@@ -81,6 +99,96 @@ Managers can configure notification settings at `/manager/notification-preferenc
 | VOR Status | ✅ Yes | Immediate |
 | Defect Reported | ✅ Yes | Immediate |
 | Inspection Failed | ✅ Yes | Immediate |
+
+---
+
+## In-App Notifications
+
+### How In-App Notifications Work
+
+When the scheduler runs, it automatically creates in-app notifications for all managers in addition to sending emails.
+
+**Flow:**
+1. Scheduler identifies vehicles with upcoming expiry dates
+2. Finds all managers for the company (`role = 'manager'`)
+3. Calls `sendNotification()` with `userId` parameter
+4. `sendNotification()` automatically calls `pushNotificationService.sendToUser()`
+5. Notification is saved to `notifications` table
+6. Notification appears in manager's dashboard notification center
+
+### Notification Center UI
+
+**Location:** Top-right corner of manager dashboard (bell icon)
+
+**Features:**
+- 🔔 Bell icon with unread count badge
+- Click to open notification dropdown
+- Shows recent notifications (title + message)
+- Click notification to view details
+- Mark as read functionality
+- Link to full notification history page
+
+**Notification Types:**
+- 🚗 MOT Expiry Alert (normal priority)
+- 💷 Tax Expiry Alert (normal priority)
+- 🔧 Service Due Alert (normal priority)
+- ⚠️ VOR Status Change (high priority)
+- 🔴 Defect Reported (high priority)
+- ❌ Inspection Failed (high priority)
+
+### Priority Levels
+
+**High Priority** (red badge, top of list):
+- VOR Status Changes
+- Defect Reports
+- Failed Inspections
+
+**Normal Priority** (blue badge):
+- MOT Expiry
+- Tax Expiry
+- Service Due
+
+### Database Schema
+
+```typescript
+interface Notification {
+  id: number;
+  companyId: number;
+  senderId: number; // 0 for system notifications
+  recipientId: number; // Manager user ID
+  isBroadcast: boolean;
+  title: string;
+  message: string;
+  priority: 'HIGH' | 'NORMAL';
+  isRead: boolean;
+  createdAt: Date;
+}
+```
+
+### Viewing Notifications
+
+**API Endpoint:**
+```http
+GET /api/notifications?userId={userId}&limit=50&offset=0
+```
+
+**Response:**
+```json
+{
+  "notifications": [
+    {
+      "id": 123,
+      "title": "MOT Expiry Alert - ABC123",
+      "message": "Vehicle ABC123 (Ford Transit) MOT expires in 25 days on 01/03/2026.",
+      "priority": "NORMAL",
+      "isRead": false,
+      "createdAt": "2026-02-02T08:00:00.000Z"
+    }
+  ],
+  "total": 15,
+  "unreadCount": 5
+}
+```
 
 ---
 

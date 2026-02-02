@@ -374,3 +374,19 @@
 - [x] Create comprehensive documentation (NOTIFICATION_SCHEDULER.md)
 - [ ] Test notification scheduler end-to-end (requires real email setup)
 - [ ] Add License expiry check (when implemented in notificationService)
+
+## In-App Notification Integration
+
+- [x] Analyze existing in-app notification system (pushNotificationService)
+- [x] Update notificationService to create in-app notifications
+- [x] Integrate pushNotificationService into scheduler
+- [x] Update checkMOTExpiry to send to all managers
+- [x] Update checkTaxExpiry to send to all managers
+- [x] Update checkServiceDue to send to all managers
+- [x] Add helper functions (getNotificationTitle, getPriorityForType)
+- [ ] Test MOT expiry in-app notifications (requires test data)
+- [ ] Test Tax expiry in-app notifications (requires test data)
+- [ ] Test Service due in-app notifications (requires test data)
+- [ ] Verify notifications appear in dashboard (requires test)
+- [ ] Verify notifications appear in notification center (requires test)
+- [x] Update documentation to reflect in-app notifications
