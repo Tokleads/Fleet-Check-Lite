@@ -11,6 +11,7 @@ import { notificationHistory, notificationPreferences, notificationTemplates } f
 import { vehicles, users } from "../shared/schema";
 import { eq, and, lte, gte, isNull } from "drizzle-orm";
 import { pushNotificationService } from "./pushNotificationService";
+import { Resend } from 'resend';
 
 export type NotificationType = 
   | 'MOT_EXPIRY'
@@ -103,14 +104,60 @@ export async function sendNotification(data: NotificationData): Promise<boolean>
 }
 
 /**
- * Send email notification (mock implementation - replace with actual email service)
+ * Send email notification using Resend
  */
 async function sendEmail(to: string, subject: string, body: string): Promise<boolean> {
   try {
-    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-    console.log(`[EMAIL] To: ${to}, Subject: ${subject}, Body: ${body}`);
+    const resendApiKey = process.env.RESEND_API_KEY;
     
-    // Mock success for now
+    if (!resendApiKey) {
+      console.warn('[EMAIL] RESEND_API_KEY not configured, skipping email send');
+      return false;
+    }
+    
+    const resend = new Resend(resendApiKey);
+    
+    const { data, error } = await resend.emails.send({
+      from: 'Titan Fleet <notifications@titanfleet.co.uk>',
+      to: [to],
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: #1e3a8a; color: white; padding: 20px; text-align: center; }
+              .content { background: #f9fafb; padding: 30px; }
+              .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>Titan Fleet</h1>
+              </div>
+              <div class="content">
+                ${body}
+              </div>
+              <div class="footer">
+                <p>This is an automated notification from Titan Fleet.</p>
+                <p>© ${new Date().getFullYear()} Titan Fleet. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `
+    });
+    
+    if (error) {
+      console.error('[EMAIL] Resend error:', error);
+      return false;
+    }
+    
+    console.log(`[EMAIL] Sent successfully to ${to} (ID: ${data?.id})`);
     return true;
   } catch (error) {
     console.error('Error sending email:', error);

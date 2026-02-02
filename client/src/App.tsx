@@ -30,6 +30,7 @@ import UserRoles from "@/pages/manager/UserRoles";
 import NotificationPreferences from "@/pages/manager/NotificationPreferences";
 import NotificationHistory from './pages/manager/NotificationHistory';
 import PayRates from './pages/manager/PayRates';
+import FuelIntelligence from './pages/manager/FuelIntelligence';
 import Performance from "@/pages/admin/Performance";
 import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
 import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/manager/live-tracking" component={LiveTracking} />
       <Route path="/manager/timesheets" component={Timesheets} />
       <Route path="/manager/pay-rates" component={PayRates} />
+      <Route path="/manager/fuel-intelligence" component={FuelIntelligence} />
       <Route path="/manager/titan-command" component={TitanCommand} />
       <Route path="/manager/geofences" component={Geofences} />
       <Route path="/manager/advanced-dashboard" component={AdvancedDashboard} />
