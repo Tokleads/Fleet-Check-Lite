@@ -35,6 +35,7 @@ const navItems = [
   { path: "/manager", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/manager/advanced-dashboard", icon: BarChart3, label: "Analytics" },
   { path: "/manager/live-tracking", icon: Navigation, label: "Live Tracking" },
+  { path: "/manager/drivers", icon: Users, label: "Drivers" },
   { path: "/manager/timesheets", icon: Clock, label: "Timesheets" },
   { path: "/manager/pay-rates", icon: DollarSign, label: "Pay Rates" },
   { path: "/manager/fuel-intelligence", icon: TrendingUp, label: "Fuel Intelligence" },

@@ -31,6 +31,7 @@ import NotificationPreferences from "@/pages/manager/NotificationPreferences";
 import NotificationHistory from './pages/manager/NotificationHistory';
 import PayRates from './pages/manager/PayRates';
 import FuelIntelligence from './pages/manager/FuelIntelligence';
+import Drivers from './pages/manager/Drivers';
 import Performance from "@/pages/admin/Performance";
 import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
 import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/manager/audit-log" component={ManagerAuditLog} />
       <Route path="/manager/settings" component={ManagerSettings} />
       <Route path="/manager/live-tracking" component={LiveTracking} />
+      <Route path="/manager/drivers" component={Drivers} />
       <Route path="/manager/timesheets" component={Timesheets} />
       <Route path="/manager/pay-rates" component={PayRates} />
       <Route path="/manager/fuel-intelligence" component={FuelIntelligence} />
