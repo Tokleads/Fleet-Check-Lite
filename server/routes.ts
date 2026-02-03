@@ -668,6 +668,7 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Invalid data", details: error.errors });
       }
+      console.error("Error creating vehicle:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

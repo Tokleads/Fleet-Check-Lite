@@ -27,6 +27,7 @@ export interface IStorage {
   // Company operations
   getCompanyByCode(code: string): Promise<Company | undefined>;
   createCompany(company: InsertCompany): Promise<Company>;
+  getAllCompanies(): Promise<Company[]>;
   
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -178,6 +179,10 @@ export class DatabaseStorage implements IStorage {
   async createCompany(company: InsertCompany): Promise<Company> {
     const [newCompany] = await db.insert(companies).values(company).returning();
     return newCompany;
+  }
+
+  async getAllCompanies(): Promise<Company[]> {
+    return await db.select().from(companies);
   }
 
   // User
