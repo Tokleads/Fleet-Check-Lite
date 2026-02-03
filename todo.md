@@ -407,3 +407,20 @@
 - [x] Create comprehensive documentation (WAGE_CALCULATION_SYSTEM.md)
 - [ ] Test wage calculations with real data (after deployment)
 - [ ] Run database migration (db:push) in production
+
+## Driver Management Page
+
+- [x] Create dedicated Drivers page with visual driver cards
+- [x] Add "+ Add Driver" button with prominent placement
+- [x] Build Add Driver form (name, email, phone, license, assigned vehicle)
+- [x] Add driver status indicators (On Shift, Starting Soon, Off Shift)
+- [x] Show current location for drivers on shift
+- [x] Display assigned vehicle for each driver
+- [x] Add shift time display (current shift start/end)
+- [ ] Create driver detail view/modal
+- [x] Add edit driver functionality
+- [x] Add delete/deactivate driver functionality
+- [x] Add driver search and filter
+- [x] Add "Drivers" menu item to navigation
+- [x] Backend API for driver CRUD operations
+- [ ] Test driver management workflow end-to-end

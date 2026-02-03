@@ -10,6 +10,7 @@ import { healthCheck, livenessProbe, readinessProbe } from "./healthCheck";
 import { getPerformanceStats, getSlowQueries } from "./performanceMonitoring";
 import { runNotificationChecks, getSchedulerStatus } from "./scheduler";
 import { registerFuelIntelligenceRoutes } from "./fuelIntelligenceRoutes";
+import driverRoutes from "./driverRoutes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -17,6 +18,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Fuel Intelligence routes
   registerFuelIntelligenceRoutes(app);
+  
+  // Driver management routes
+  app.use("/api/drivers", driverRoutes);
   
   // Health check endpoints
   app.get("/health", healthCheck);
