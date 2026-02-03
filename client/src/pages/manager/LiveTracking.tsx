@@ -10,7 +10,9 @@ import {
   TrendingUp,
   Zap
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 interface DriverLocation {
   id: number;
@@ -46,8 +48,8 @@ export default function LiveTracking() {
   const company = session.getCompany();
   const companyId = company?.id;
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [markers, setMarkers] = useState<Map<number, google.maps.Marker>>(new Map());
+  const leafletMapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Map<number, L.Marker>>(new Map());
 
   // Fetch driver locations every 30 seconds
   const { data: locations, isLoading } = useQuery<DriverLocation[]>({
@@ -73,139 +75,114 @@ export default function LiveTracking() {
     refetchInterval: 30000,
   });
 
-  // Initialize Google Map
+  // Initialize Leaflet Map
   useEffect(() => {
-    if (!mapRef.current || map) return;
+    if (!mapRef.current || leafletMapRef.current) return;
 
-    const initMap = () => {
-      const newMap = new google.maps.Map(mapRef.current!, {
-        center: { lat: 51.5074, lng: -0.1278 }, // Default to London
-        zoom: 10,
-        styles: [
-          {
-            featureType: "all",
-            elementType: "geometry",
-            stylers: [{ color: "#1e293b" }]
-          },
-          {
-            featureType: "all",
-            elementType: "labels.text.fill",
-            stylers: [{ color: "#cbd5e1" }]
-          },
-          {
-            featureType: "all",
-            elementType: "labels.text.stroke",
-            stylers: [{ color: "#0f172a" }]
-          },
-          {
-            featureType: "water",
-            elementType: "geometry",
-            stylers: [{ color: "#0f172a" }]
-          },
-          {
-            featureType: "road",
-            elementType: "geometry",
-            stylers: [{ color: "#334155" }]
-          }
-        ]
-      });
-      setMap(newMap);
+    // Create map centered on London
+    const map = L.map(mapRef.current).setView([51.5074, -0.1278], 10);
+
+    // Add OpenStreetMap tile layer (free!)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    leafletMapRef.current = map;
+
+    // Cleanup on unmount
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
     };
-
-    // Load Google Maps script if not already loaded
-    if (!window.google) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initMap;
-      document.head.appendChild(script);
-    } else {
-      initMap();
-    }
-  }, [map]);
+  }, []);
 
   // Update markers when locations change
   useEffect(() => {
-    if (!map || !locations || locations.length === 0) return;
+    if (!leafletMapRef.current || !locations || locations.length === 0) return;
 
-    const newMarkers = new Map<number, google.maps.Marker>();
+    const map = leafletMapRef.current;
+    const markers = markersRef.current;
 
-    // First, remove all old markers safely
+    // Remove old markers
     markers.forEach((marker) => {
-      try {
-        marker.setMap(null);
-      } catch (error) {
-        console.warn('Error removing marker:', error);
-      }
+      marker.remove();
     });
+    markers.clear();
 
-    // Then create new markers
+    // Create new markers
     locations.forEach((location) => {
       try {
-        const position = {
-          lat: parseFloat(location.latitude),
-          lng: parseFloat(location.longitude)
-        };
+        const lat = parseFloat(location.latitude);
+        const lng = parseFloat(location.longitude);
+
+        if (isNaN(lat) || isNaN(lng)) {
+          console.warn('Invalid coordinates for driver', location.driverId);
+          return;
+        }
 
         // Determine marker color based on status
         const isStagnant = location.isStagnant;
         const markerColor = isStagnant ? '#ef4444' : '#00a3ff';
 
-        const marker = new google.maps.Marker({
-          position,
-          map,
-          title: location.driver?.name || `Driver ${location.driverId}`,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: markerColor,
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2
-          }
+        // Create custom icon
+        const customIcon = L.divIcon({
+          className: 'custom-marker',
+          html: `
+            <div style="
+              width: 20px;
+              height: 20px;
+              background-color: ${markerColor};
+              border: 3px solid white;
+              border-radius: 50%;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            "></div>
+          `,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
         });
 
-        // Info window
-        const infoWindow = new google.maps.InfoWindow({
-          content: `
-            <div style="color: #0f172a; padding: 8px;">
-              <h3 style="font-weight: bold; margin-bottom: 4px;">${location.driver?.name || 'Unknown Driver'}</h3>
-              <p style="margin: 2px 0;">Speed: ${location.speed} km/h</p>
-              <p style="margin: 2px 0;">Last Update: ${new Date(location.timestamp).toLocaleTimeString()}</p>
-              ${isStagnant ? '<p style="color: #ef4444; font-weight: bold;">⚠️ STAGNANT</p>' : ''}
-            </div>
-          `
-        });
+        // Create marker
+        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
 
-        marker.addListener('click', () => {
-          infoWindow.open(map, marker);
-        });
+        // Create popup content
+        const popupContent = `
+          <div style="font-family: system-ui, -apple-system, sans-serif; min-width: 200px;">
+            <h3 style="font-weight: bold; margin: 0 0 8px 0; font-size: 14px; color: #0f172a;">
+              ${location.driver?.name || 'Unknown Driver'}
+            </h3>
+            <p style="margin: 4px 0; font-size: 13px; color: #475569;">
+              <strong>Speed:</strong> ${location.speed} km/h
+            </p>
+            <p style="margin: 4px 0; font-size: 13px; color: #475569;">
+              <strong>Last Update:</strong> ${new Date(location.timestamp).toLocaleTimeString()}
+            </p>
+            ${isStagnant ? '<p style="color: #ef4444; font-weight: bold; margin: 8px 0 0 0; font-size: 13px;">⚠️ STAGNANT</p>' : ''}
+          </div>
+        `;
 
-        newMarkers.set(location.driverId, marker);
+        marker.bindPopup(popupContent);
+
+        markers.set(location.driverId, marker);
       } catch (error) {
         console.error('Error creating marker for driver', location.driverId, error);
       }
     });
 
-    setMarkers(newMarkers);
-
-    // Auto-center map on first load
-    if (locations.length > 0 && markers.size === 0) {
+    // Auto-fit bounds to show all markers
+    if (locations.length > 0) {
       try {
-        const bounds = new google.maps.LatLngBounds();
-        locations.forEach(loc => {
-          bounds.extend({
-            lat: parseFloat(loc.latitude),
-            lng: parseFloat(loc.longitude)
-          });
-        });
-        map.fitBounds(bounds);
+        const bounds = L.latLngBounds(
+          locations.map(loc => [parseFloat(loc.latitude), parseFloat(loc.longitude)])
+        );
+        map.fitBounds(bounds, { padding: [50, 50] });
       } catch (error) {
         console.warn('Error fitting bounds:', error);
       }
     }
-  }, [map, locations]);
+  }, [locations]);
 
   const activeDrivers = locations?.filter(l => !l.isStagnant).length || 0;
   const stagnantDrivers = locations?.filter(l => l.isStagnant).length || 0;
@@ -294,10 +271,9 @@ export default function LiveTracking() {
             <div 
               ref={mapRef} 
               className="w-full h-[600px]"
-              style={{ background: '#1e293b' }}
             >
               {isLoading && (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center h-full bg-slate-50">
                   <div className="text-slate-400">Loading map...</div>
                 </div>
               )}

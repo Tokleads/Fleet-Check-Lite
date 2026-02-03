@@ -9,11 +9,15 @@ import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
 import { healthCheck, livenessProbe, readinessProbe } from "./healthCheck";
 import { getPerformanceStats, getSlowQueries } from "./performanceMonitoring";
 import { runNotificationChecks, getSchedulerStatus } from "./scheduler";
+import { registerFuelIntelligenceRoutes } from "./fuelIntelligenceRoutes";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Fuel Intelligence routes
+  registerFuelIntelligenceRoutes(app);
+  
   // Health check endpoints
   app.get("/health", healthCheck);
   app.get("/health/live", livenessProbe);

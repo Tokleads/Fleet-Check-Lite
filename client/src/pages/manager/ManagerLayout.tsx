@@ -24,7 +24,8 @@ import {
   Users,
   FolderOpen,
   Activity,
-  DollarSign
+  DollarSign,
+  TrendingUp
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
@@ -36,6 +37,7 @@ const navItems = [
   { path: "/manager/live-tracking", icon: Navigation, label: "Live Tracking" },
   { path: "/manager/timesheets", icon: Clock, label: "Timesheets" },
   { path: "/manager/pay-rates", icon: DollarSign, label: "Pay Rates" },
+  { path: "/manager/fuel-intelligence", icon: TrendingUp, label: "Fuel Intelligence" },
   { path: "/manager/titan-command", icon: Radio, label: "Titan Command" },
   { path: "/manager/geofences", icon: MapPin, label: "Geofences" },
   { path: "/manager/inspections", icon: ClipboardCheck, label: "Inspections" },
