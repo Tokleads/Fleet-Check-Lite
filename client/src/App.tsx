@@ -26,6 +26,7 @@ import TitanCommand from "@/pages/manager/TitanCommand";
 import Geofences from "@/pages/manager/Geofences";
 import AdvancedDashboard from "@/pages/manager/AdvancedDashboard";
 import FleetDocuments from "@/pages/manager/FleetDocuments";
+import VehicleDetails from "@/pages/manager/VehicleDetails";
 import UserRoles from "@/pages/manager/UserRoles";
 import NotificationPreferences from "@/pages/manager/NotificationPreferences";
 import NotificationHistory from './pages/manager/NotificationHistory';
@@ -55,6 +56,7 @@ function Router() {
       <Route path="/manager/defects" component={ManagerDefects} />
       <Route path="/manager/fuel" component={ManagerFuelLog} />
       <Route path="/manager/fleet" component={ManagerFleet} />
+      <Route path="/manager/vehicle/:id" component={VehicleDetails} />
       <Route path="/manager/documents" component={ManagerDocuments} />
       <Route path="/manager/license" component={ManagerLicense} />
       <Route path="/manager/audit-log" component={ManagerAuditLog} />
