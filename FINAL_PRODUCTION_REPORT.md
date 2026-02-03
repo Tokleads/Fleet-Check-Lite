@@ -22,7 +22,7 @@
 
 ### 2. Resend Email Integration ✅
 - **Status:** Fully implemented
-- **API Key:** Configured (`re_MfEMAuAM_Kqx4GtSz33w9Mi4n6mDp55Br`)
+- **API Key:** Configured (stored in Replit Secrets)
 - **Package:** Installed (`resend` npm package)
 - **Implementation:** `server/notificationService.ts` updated with real email sending
 - **Email Template:** Professional HTML template with Titan Fleet branding

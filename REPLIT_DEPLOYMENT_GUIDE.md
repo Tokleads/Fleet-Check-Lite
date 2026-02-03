@@ -20,7 +20,7 @@ This guide provides step-by-step instructions to complete the Titan Fleet deploy
 ### 2. Resend Email Integration
 - ✅ Email service implemented in `server/notificationService.ts`
 - ✅ Professional HTML email templates
-- ✅ API Key: `re_MfEMAuAM_Kqx4GtSz33w9Mi4n6mDp55Br`
+- ✅ API Key: (configured in Replit Secrets)
 - ✅ Resend package installed
 
 ### 3. Wage Calculation System
@@ -49,7 +49,7 @@ In your Replit project, go to **Secrets** (lock icon in sidebar) and add:
 SENTRY_DSN=https://578ece1d50d0a9ac8ea62f5140300b0b@o4510817437614080.ingest.de.sentry.io/4510817445412944
 
 # Resend Email Service
-RESEND_API_KEY=re_MfEMAuAM_Kqx4GtSz33w9Mi4n6mDp55Br
+RESEND_API_KEY=your_resend_api_key_here
 ```
 
 ### Step 2: Pull Latest Code from GitHub
