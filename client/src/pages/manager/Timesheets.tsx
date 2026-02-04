@@ -8,7 +8,9 @@ import {
   Download,
   Filter,
   CheckCircle2,
-  XCircle
+  XCircle,
+  AlertTriangle,
+  Signal
 } from "lucide-react";
 import { useState } from "react";
 
@@ -21,6 +23,9 @@ interface Timesheet {
   departureTime?: string;
   totalMinutes?: number;
   status: string;
+  arrivalAccuracy?: number | null;
+  departureAccuracy?: number | null;
+  manualDepotSelection?: boolean;
   driver?: {
     name: string;
     email: string;
@@ -222,12 +227,15 @@ export default function Timesheets() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Flags
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
                       Loading timesheets...
                     </td>
                   </tr>
@@ -287,11 +295,27 @@ export default function Timesheets() {
                           </span>
                         )}
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {timesheet.manualDepotSelection && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700" title="Driver manually selected depot - not within geofence">
+                              <AlertTriangle className="h-3 w-3" />
+                              Manual
+                            </span>
+                          )}
+                          {timesheet.arrivalAccuracy && timesheet.arrivalAccuracy > 50 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700" title={`GPS accuracy: ±${timesheet.arrivalAccuracy}m`}>
+                              <Signal className="h-3 w-3" />
+                              ±{timesheet.arrivalAccuracy}m
+                            </span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center">
+                    <td colSpan={7} className="px-4 py-12 text-center">
                       <Calendar className="h-12 w-12 mx-auto mb-3 text-slate-300" />
                       <p className="text-slate-500 font-medium">No timesheets found</p>
                       <p className="text-sm text-slate-400 mt-1">
