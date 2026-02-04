@@ -298,15 +298,21 @@ export default function Timesheets() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {timesheet.manualDepotSelection && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700" title="Driver manually selected depot - not within geofence">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700" title="Driver manually selected depot - not within geofence" data-testid={`flag-manual-${timesheet.id}`}>
                               <AlertTriangle className="h-3 w-3" />
                               Manual
                             </span>
                           )}
                           {timesheet.arrivalAccuracy && timesheet.arrivalAccuracy > 50 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700" title={`GPS accuracy: ±${timesheet.arrivalAccuracy}m`}>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700" title={`Clock-in GPS accuracy: ±${timesheet.arrivalAccuracy}m`} data-testid={`flag-arrival-accuracy-${timesheet.id}`}>
                               <Signal className="h-3 w-3" />
-                              ±{timesheet.arrivalAccuracy}m
+                              In: ±{timesheet.arrivalAccuracy}m
+                            </span>
+                          )}
+                          {timesheet.departureAccuracy && timesheet.departureAccuracy > 50 && (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700" title={`Clock-out GPS accuracy: ±${timesheet.departureAccuracy}m`} data-testid={`flag-departure-accuracy-${timesheet.id}`}>
+                              <Signal className="h-3 w-3" />
+                              Out: ±{timesheet.departureAccuracy}m
                             </span>
                           )}
                         </div>
