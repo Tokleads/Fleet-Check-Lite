@@ -2189,7 +2189,7 @@ export async function registerRoutes(
   // Clock in
   app.post("/api/timesheets/clock-in", async (req, res) => {
     try {
-      const { companyId, driverId, depotId, latitude, longitude } = req.body;
+      const { companyId, driverId, depotId, latitude, longitude, accuracy, manualSelection } = req.body;
       
       if (!companyId || !driverId || !depotId || !latitude || !longitude) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2200,7 +2200,9 @@ export async function registerRoutes(
         Number(driverId),
         Number(depotId),
         latitude,
-        longitude
+        longitude,
+        accuracy ? Math.round(Number(accuracy)) : null,
+        manualSelection === true
       );
       
       res.json(timesheet);
@@ -2213,7 +2215,7 @@ export async function registerRoutes(
   // Clock out
   app.post("/api/timesheets/clock-out", async (req, res) => {
     try {
-      const { timesheetId, latitude, longitude } = req.body;
+      const { timesheetId, latitude, longitude, accuracy } = req.body;
       
       if (!timesheetId || !latitude || !longitude) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2222,7 +2224,8 @@ export async function registerRoutes(
       const timesheet = await storage.clockOut(
         Number(timesheetId),
         latitude,
-        longitude
+        longitude,
+        accuracy ? Math.round(Number(accuracy)) : null
       );
       
       res.json(timesheet);

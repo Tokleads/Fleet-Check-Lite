@@ -1070,7 +1070,7 @@ export class DatabaseStorage implements IStorage {
     return active || undefined;
   }
   
-  async clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string): Promise<Timesheet> {
+  async clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string, arrivalAccuracy?: number | null, manualDepotSelection?: boolean): Promise<Timesheet> {
     // Check if driver already has an active timesheet
     const existing = await this.getActiveTimesheet(driverId);
     if (existing) {
@@ -1095,11 +1095,14 @@ export class DatabaseStorage implements IStorage {
       arrivalTime: new Date(),
       arrivalLatitude: latitude,
       arrivalLongitude: longitude,
+      arrivalAccuracy: arrivalAccuracy ?? null,
+      manualDepotSelection: manualDepotSelection ?? false,
       status: 'ACTIVE',
       departureTime: null,
       totalMinutes: null,
       departureLatitude: null,
-      departureLongitude: null
+      departureLongitude: null,
+      departureAccuracy: null
     }).returning();
     
     if (!timesheet) {
@@ -1109,7 +1112,7 @@ export class DatabaseStorage implements IStorage {
     return timesheet;
   }
   
-  async clockOut(timesheetId: number, latitude: string, longitude: string): Promise<Timesheet> {
+  async clockOut(timesheetId: number, latitude: string, longitude: string, departureAccuracy?: number | null): Promise<Timesheet> {
     // Get existing timesheet
     const [existing] = await db.select().from(timesheets)
       .where(eq(timesheets.id, timesheetId))
@@ -1134,6 +1137,7 @@ export class DatabaseStorage implements IStorage {
         departureTime,
         departureLatitude: latitude,
         departureLongitude: longitude,
+        departureAccuracy: departureAccuracy ?? null,
         totalMinutes,
         status: 'COMPLETED',
         updatedAt: new Date()
