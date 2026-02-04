@@ -55,6 +55,9 @@ async function buildAll() {
     define: {
       "process.env.NODE_ENV": '"production"',
     },
+    banner: {
+      js: `var __filename = __filename || require('url').fileURLToPath(import.meta.url); var __dirname = __dirname || require('path').dirname(__filename);`,
+    },
     minify: true,
     external: externals,
     logLevel: "info",

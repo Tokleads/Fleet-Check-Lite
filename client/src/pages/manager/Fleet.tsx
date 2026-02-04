@@ -6,6 +6,8 @@ import { session } from "@/lib/session";
 import { VORDialog } from "@/components/VORDialog";
 import { ServiceDialog } from "@/components/ServiceDialog";
 import { ServiceHistoryDialog } from "@/components/ServiceHistoryDialog";
+import { EditVehicleDialog } from "@/components/EditVehicleDialog";
+import { DeleteVehicleDialog } from "@/components/DeleteVehicleDialog";
 import { MultiCountdownBadge } from "@/components/CountdownBadge";
 import { Pagination } from "@/components/Pagination";
 import { useFleetVehicles, useCreateVehicle, useToggleVehicleActive } from "@/hooks/useFleetVehicles";
@@ -582,6 +584,30 @@ export default function ManagerFleet() {
         <ServiceHistoryDialog
           vehicle={serviceHistoryVehicle}
           onClose={() => setServiceHistoryVehicle(null)}
+        />
+      )}
+
+      {/* Edit Vehicle Dialog */}
+      {editingVehicle && (
+        <EditVehicleDialog
+          vehicle={editingVehicle}
+          onClose={() => setEditingVehicle(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['fleet-vehicles'] });
+            setEditingVehicle(null);
+          }}
+        />
+      )}
+
+      {/* Delete Vehicle Dialog */}
+      {deletingVehicle && (
+        <DeleteVehicleDialog
+          vehicle={deletingVehicle}
+          onClose={() => setDeletingVehicle(null)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['fleet-vehicles'] });
+            setDeletingVehicle(null);
+          }}
         />
       )}
     </ManagerLayout>

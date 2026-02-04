@@ -99,6 +99,7 @@ export interface IStorage {
   
   // Document operations
   getDocumentsByCompany(companyId: number): Promise<Document[]>;
+  getDocumentById(id: number): Promise<Document | undefined>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<void>;
@@ -134,8 +135,8 @@ export interface IStorage {
   // Timesheet operations
   getTimesheets(companyId: number, status?: string, startDate?: string, endDate?: string): Promise<(Timesheet & { driver?: User })[]>;
   getActiveTimesheet(driverId: number): Promise<Timesheet | undefined>;
-  clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string): Promise<Timesheet>;
-  clockOut(timesheetId: number, latitude: string, longitude: string): Promise<Timesheet>;
+  clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string, accuracy?: number, manualSelection?: boolean): Promise<Timesheet>;
+  clockOut(timesheetId: number, latitude: string, longitude: string, accuracy?: number): Promise<Timesheet>;
   updateTimesheet(id: number, updates: Partial<Timesheet>): Promise<Timesheet | undefined>;
   generateTimesheetCSV(timesheets: (Timesheet & { driver?: User })[]): Promise<string>;
   
@@ -164,6 +165,7 @@ export interface IStorage {
   completeReminder(id: number, completedBy: number, notes?: string): Promise<any | undefined>;
   snoozeReminder(id: number, snoozedBy: number, snoozedUntil: Date, reason?: string): Promise<any | undefined>;
   dismissReminder(id: number): Promise<any | undefined>;
+  deleteReminder(id: number): Promise<void>;
   getCompany(companyId: number): Promise<any | undefined>;
   getVehicle(vehicleId: number): Promise<any | undefined>;
 }
@@ -675,12 +677,20 @@ export class DatabaseStorage implements IStorage {
     return newDoc;
   }
 
+  async getDocumentById(id: number): Promise<Document | undefined> {
+    const [doc] = await db.select()
+      .from(documents)
+      .where(eq(documents.id, id))
+      .limit(1);
+    return doc;
+  }
+  
   async updateDocument(id: number, updates: Partial<Document>): Promise<Document | undefined> {
     const [updated] = await db.update(documents)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(documents.id, id))
       .returning();
-    return updated || undefined;
+    return updated;
   }
 
   async deleteDocument(id: number): Promise<void> {
@@ -968,23 +978,16 @@ export class DatabaseStorage implements IStorage {
     const lat1 = parseFloat(latitude);
     const lon1 = parseFloat(longitude);
     
+    // Import geofence utils
+    const { isPointInGeofence } = await import('../shared/geofenceUtils');
+    
     // Check each geofence
     for (const geofence of allGeofences) {
-      const lat2 = parseFloat(geofence.latitude);
-      const lon2 = parseFloat(geofence.longitude);
-      
-      // Calculate distance using Haversine formula
-      const R = 6371000; // Earth's radius in meters
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-      
-      const isInside = distance <= geofence.radiusMeters;
+      // Check if driver is inside geofence (supports both circle and polygon)
+      const isInside = isPointInGeofence(
+        { lat: lat1, lng: lon1 },
+        geofence as any
+      );
       
       // Check for active timesheet
       const [activeTimesheet] = await db.select().from(timesheets)
@@ -1065,7 +1068,7 @@ export class DatabaseStorage implements IStorage {
     return active || undefined;
   }
   
-  async clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string): Promise<Timesheet> {
+  async clockIn(companyId: number, driverId: number, depotId: number, latitude: string, longitude: string, accuracy?: number, manualSelection?: boolean): Promise<Timesheet> {
     // Check if driver already has an active timesheet
     const existing = await this.getActiveTimesheet(driverId);
     if (existing) {
@@ -1090,11 +1093,14 @@ export class DatabaseStorage implements IStorage {
       arrivalTime: new Date(),
       arrivalLatitude: latitude,
       arrivalLongitude: longitude,
+      arrivalAccuracy: accuracy,
+      manualDepotSelection: manualSelection || false,
       status: 'ACTIVE',
       departureTime: null,
       totalMinutes: null,
       departureLatitude: null,
-      departureLongitude: null
+      departureLongitude: null,
+      departureAccuracy: null
     }).returning();
     
     if (!timesheet) {
@@ -1104,7 +1110,7 @@ export class DatabaseStorage implements IStorage {
     return timesheet;
   }
   
-  async clockOut(timesheetId: number, latitude: string, longitude: string): Promise<Timesheet> {
+  async clockOut(timesheetId: number, latitude: string, longitude: string, accuracy?: number): Promise<Timesheet> {
     // Get existing timesheet
     const [existing] = await db.select().from(timesheets)
       .where(eq(timesheets.id, timesheetId))
@@ -1129,6 +1135,7 @@ export class DatabaseStorage implements IStorage {
         departureTime,
         departureLatitude: latitude,
         departureLongitude: longitude,
+        departureAccuracy: accuracy,
         totalMinutes,
         status: 'COMPLETED',
         updatedAt: new Date()
@@ -1522,6 +1529,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(reminders.id, id))
       .returning();
     return updated;
+  }
+  
+  async deleteReminder(id: number): Promise<void> {
+    const { reminders } = await import('@shared/schema');
+    await db.delete(reminders)
+      .where(eq(reminders.id, id));
   }
   
   async getCompany(companyId: number): Promise<any | undefined> {

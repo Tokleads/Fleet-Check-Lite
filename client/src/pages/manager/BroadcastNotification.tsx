@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { session } from '@/lib/session';
 
 interface BroadcastFormData {
   title: string;
@@ -95,8 +96,12 @@ export default function BroadcastNotification() {
     setSending(true);
 
     try {
-      // Get company ID from session (placeholder - implement your auth)
-      const companyId = 1; // TODO: Get from auth context
+      const company = session.getCompany();
+      const companyId = company?.id;
+
+      if (!companyId) {
+        throw new Error('No company found in session');
+      }
 
       const response = await fetch('/api/notifications/broadcast', {
         method: 'POST',

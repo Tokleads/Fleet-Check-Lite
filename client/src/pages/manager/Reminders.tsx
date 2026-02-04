@@ -37,7 +37,8 @@ import {
   X, 
   Pause,
   Calendar,
-  Car
+  Car,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -223,6 +224,25 @@ export default function Reminders() {
       }
     } catch (error) {
       toast.error('Failed to dismiss reminder');
+    }
+  };
+
+  const handleDeleteReminder = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this reminder? This action cannot be undone.')) return;
+    
+    try {
+      const response = await fetch(`/api/reminders/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        toast.success('Reminder deleted successfully');
+        fetchReminders();
+      } else {
+        toast.error('Failed to delete reminder');
+      }
+    } catch (error) {
+      toast.error('Failed to delete reminder');
     }
   };
 
@@ -423,6 +443,13 @@ export default function Reminders() {
                             </Button>
                           </>
                         )}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteReminder(reminder.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

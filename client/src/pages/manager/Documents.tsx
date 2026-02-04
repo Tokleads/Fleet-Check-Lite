@@ -11,6 +11,7 @@ import {
   Users,
   Eye,
   Trash2,
+  Pencil,
   AlertCircle,
   CheckCircle2,
   X,
@@ -40,6 +41,7 @@ export default function ManagerDocuments() {
   const companyId = company?.id;
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<any | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState({
@@ -153,6 +155,35 @@ export default function ManagerDocuments() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, doc }: { id: number; doc: any }) => {
+      let fileUrl = doc.fileUrl;
+      if (selectedFile) {
+        const uploadedPath = await uploadFile();
+        if (uploadedPath) {
+          fileUrl = uploadedPath;
+        }
+      }
+      
+      const res = await fetch(`/api/manager/documents/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...doc,
+          fileUrl,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update document");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["manager-documents"] });
+      setEditingDocument(null);
+      setSelectedFile(null);
+      setNewDoc({ title: "", description: "", category: "TOOLBOX_TALK", priority: "NORMAL", content: "", fileUrl: "" });
+    },
+  });
+
   const driverCount = users?.filter((u: any) => u.role === "DRIVER" && u.active).length || 0;
 
   return (
@@ -200,12 +231,30 @@ export default function ManagerDocuments() {
                       </span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => deleteMutation.mutate(doc.id)}
-                    className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => {
+                        setEditingDocument(doc);
+                        setNewDoc({
+                          title: doc.title,
+                          description: doc.description || "",
+                          category: doc.category,
+                          priority: doc.priority,
+                          content: doc.content || "",
+                          fileUrl: doc.fileUrl || "",
+                        });
+                      }}
+                      className="p-1 hover:bg-blue-50 rounded text-slate-400 hover:text-blue-500"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button 
+                      onClick={() => deleteMutation.mutate(doc.id)}
+                      className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 
                 <h3 className="font-semibold text-slate-900 mb-1">{doc.title}</h3>
@@ -231,12 +280,12 @@ export default function ManagerDocuments() {
         )}
       </div>
 
-      {showCreateModal && (
+      {(showCreateModal || editingDocument) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <TitanCard className="w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">New Document</h2>
-              <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-slate-100 rounded">
+              <h2 className="text-lg font-bold text-slate-900">{editingDocument ? "Edit Document" : "New Document"}</h2>
+              <button onClick={() => { setShowCreateModal(false); setEditingDocument(null); setNewDoc({ title: "", description: "", category: "TOOLBOX_TALK", priority: "NORMAL", content: "", fileUrl: "" }); }} className="p-1 hover:bg-slate-100 rounded">
                 <X className="h-5 w-5 text-slate-500" />
               </button>
             </div>
@@ -372,19 +421,29 @@ export default function ManagerDocuments() {
             </div>
 
             <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-              <TitanButton variant="outline" onClick={() => { setShowCreateModal(false); setSelectedFile(null); }}>
+              <TitanButton variant="outline" onClick={() => { setShowCreateModal(false); setEditingDocument(null); setSelectedFile(null); setNewDoc({ title: "", description: "", category: "TOOLBOX_TALK", priority: "NORMAL", content: "", fileUrl: "" }); }}>
                 Cancel
               </TitanButton>
               <TitanButton 
-                onClick={() => createMutation.mutate(newDoc)}
-                disabled={!newDoc.title || createMutation.isPending || isUploading}
+                onClick={() => {
+                  if (editingDocument) {
+                    updateMutation.mutate({ id: editingDocument.id, doc: newDoc });
+                  } else {
+                    createMutation.mutate(newDoc);
+                  }
+                }}
+                disabled={!newDoc.title || createMutation.isPending || updateMutation.isPending || isUploading}
               >
                 {isUploading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Uploading...
                   </>
-                ) : createMutation.isPending ? "Creating..." : "Create Document"}
+                ) : editingDocument ? (
+                  updateMutation.isPending ? "Updating..." : "Update Document"
+                ) : (
+                  createMutation.isPending ? "Creating..." : "Create Document"
+                )}
               </TitanButton>
             </div>
           </TitanCard>

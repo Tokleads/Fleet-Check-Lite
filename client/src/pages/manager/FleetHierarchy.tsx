@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { session } from "@/lib/session";
 
 type Category = {
   id: number;
@@ -36,7 +37,8 @@ type Department = {
 
 export default function FleetHierarchy() {
   const { toast } = useToast();
-  const companyId = 1; // TODO: Get from auth context
+  const company = session.getCompany();
+  const companyId = company?.id;
   
   const [categories, setCategories] = useState<Category[]>([]);
   const [costCentres, setCostCentres] = useState<CostCentre[]>([]);

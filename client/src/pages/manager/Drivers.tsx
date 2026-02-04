@@ -74,7 +74,16 @@ export default function Drivers() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [newDriver, setNewDriver] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    pin: "",
+    licenseNumber: "",
+  });
+  const [editDriver, setEditDriver] = useState({
     name: "",
     email: "",
     phone: "",
@@ -120,6 +129,29 @@ export default function Drivers() {
     },
   });
 
+  // Edit driver mutation
+  const editDriverMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: typeof editDriver }) => {
+      const res = await fetch(`/api/drivers/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update driver");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["drivers", companyId] });
+      setIsEditDialogOpen(false);
+      setEditingDriver(null);
+      setEditDriver({ name: "", email: "", phone: "", pin: "", licenseNumber: "" });
+      toast.success("Driver updated successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to update driver");
+    },
+  });
+
   // Delete driver mutation
   const deleteDriverMutation = useMutation({
     mutationFn: async (driverId: number) => {
@@ -137,6 +169,19 @@ export default function Drivers() {
       toast.error("Failed to delete driver");
     },
   });
+
+  // Handle edit driver
+  const handleEditDriver = (driver: Driver) => {
+    setEditingDriver(driver);
+    setEditDriver({
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone || "",
+      pin: driver.pin || "",
+      licenseNumber: driver.licenseNumber || "",
+    });
+    setIsEditDialogOpen(true);
+  };
 
   // Determine driver status
   const getDriverStatus = (driver: Driver) => {
@@ -263,6 +308,83 @@ export default function Drivers() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Edit Driver Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Edit Driver</DialogTitle>
+                <DialogDescription>
+                  Update driver information. Changes will be saved immediately.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Full Name *</Label>
+                  <Input
+                    id="edit-name"
+                    placeholder="John Smith"
+                    value={editDriver.name}
+                    onChange={(e) => setEditDriver({ ...editDriver, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email Address *</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    placeholder="john.smith@example.com"
+                    value={editDriver.email}
+                    onChange={(e) => setEditDriver({ ...editDriver, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">Phone Number</Label>
+                  <Input
+                    id="edit-phone"
+                    type="tel"
+                    placeholder="+44 7700 900000"
+                    value={editDriver.phone}
+                    onChange={(e) => setEditDriver({ ...editDriver, phone: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-pin">Driver PIN (4 digits) *</Label>
+                  <Input
+                    id="edit-pin"
+                    type="text"
+                    maxLength={4}
+                    placeholder="1234"
+                    value={editDriver.pin}
+                    onChange={(e) => setEditDriver({ ...editDriver, pin: e.target.value.replace(/\D/g, '') })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-license">License Number</Label>
+                  <Input
+                    id="edit-license"
+                    placeholder="SMITH123456AB7CD"
+                    value={editDriver.licenseNumber}
+                    onChange={(e) => setEditDriver({ ...editDriver, licenseNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => editingDriver && editDriverMutation.mutate({ id: editingDriver.id, data: editDriver })}
+                  disabled={!editDriver.name || !editDriver.email || editDriver.pin.length !== 4 || editDriverMutation.isPending}
+                >
+                  {editDriverMutation.isPending ? "Updating..." : "Update Driver"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Stats Cards */}
@@ -359,7 +481,7 @@ export default function Drivers() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditDriver(driver)}>
                             <Edit2 className="h-4 w-4 mr-2" />
                             Edit Driver
                           </DropdownMenuItem>

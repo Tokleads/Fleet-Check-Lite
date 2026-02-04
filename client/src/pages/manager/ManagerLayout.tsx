@@ -30,6 +30,105 @@ import {
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
 import { TitanIntelligenceSidebar } from "@/components/TitanIntelligenceSidebar";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+// Global Search Component
+function GlobalSearch() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showResults, setShowResults] = useState(false);
+  const [, setLocation] = useLocation();
+  const searchRef = useRef<HTMLDivElement>(null);
+  const company = session.getCompany();
+  const companyId = company?.id;
+
+  const { data: searchResults, isLoading } = useQuery({
+    queryKey: ["search", searchQuery, companyId],
+    queryFn: async () => {
+      if (!searchQuery || searchQuery.length < 2) return [];
+      const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}&companyId=${companyId}`);
+      if (!res.ok) throw new Error("Search failed");
+      return res.json();
+    },
+    enabled: !!searchQuery && searchQuery.length >= 2 && !!companyId,
+  });
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleResultClick = (url: string) => {
+    setLocation(url);
+    setShowResults(false);
+    setSearchQuery("");
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "vehicle": return <Truck className="h-4 w-4" />;
+      case "driver": return <User className="h-4 w-4" />;
+      case "inspection": return <ClipboardCheck className="h-4 w-4" />;
+      case "defect": return <AlertTriangle className="h-4 w-4" />;
+      default: return <Search className="h-4 w-4" />;
+    }
+  };
+
+  return (
+    <div className="relative" ref={searchRef}>
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      <input
+        type="text"
+        placeholder="Search VRM, driver, inspection..."
+        value={searchQuery}
+        onChange={(e) => {
+          setSearchQuery(e.target.value);
+          setShowResults(true);
+        }}
+        onFocus={() => setShowResults(true)}
+        className="w-80 h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
+        data-testid="input-global-search"
+      />
+      
+      {/* Results Dropdown */}
+      {showResults && searchQuery.length >= 2 && (
+        <div className="absolute top-full mt-2 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-96 overflow-y-auto z-50">
+          {isLoading ? (
+            <div className="p-4 text-center text-sm text-slate-500">Searching...</div>
+          ) : searchResults && searchResults.length > 0 ? (
+            <div className="py-2">
+              {searchResults.map((result: any) => (
+                <button
+                  key={`${result.type}-${result.id}`}
+                  onClick={() => handleResultClick(result.url)}
+                  className="w-full px-4 py-3 hover:bg-slate-50 flex items-start gap-3 text-left transition-colors"
+                >
+                  <div className="mt-0.5 text-slate-400">{getTypeIcon(result.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm text-slate-900 truncate">{result.title}</div>
+                    <div className="text-xs text-slate-500 truncate">{result.subtitle}</div>
+                    {result.description && (
+                      <div className="text-xs text-slate-400 truncate mt-0.5">{result.description}</div>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400 capitalize">{result.type}</div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-sm text-slate-500">No results found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const navItems = [
   { path: "/manager", icon: LayoutDashboard, label: "Dashboard" },
@@ -139,15 +238,7 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200/80 flex items-center justify-between px-6 sticky top-0 z-10">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search VRM, driver, inspection..."
-                className="w-80 h-10 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
-                data-testid="input-global-search"
-              />
-            </div>
+            <GlobalSearch />
           </div>
 
           <div className="flex items-center gap-2">

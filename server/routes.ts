@@ -11,6 +11,7 @@ import { getPerformanceStats, getSlowQueries } from "./performanceMonitoring";
 import { runNotificationChecks, getSchedulerStatus } from "./scheduler";
 import { registerFuelIntelligenceRoutes } from "./fuelIntelligenceRoutes";
 import driverRoutes from "./driverRoutes";
+import searchRoutes from "./searchRoutes";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -21,6 +22,9 @@ export async function registerRoutes(
   
   // Driver management routes
   app.use("/api/drivers", driverRoutes);
+  
+  // Search routes
+  app.use("/api/search", searchRoutes);
   
   // Health check endpoints
   app.get("/health", healthCheck);
@@ -492,6 +496,7 @@ export async function registerRoutes(
 
       res.json({ manager, company });
     } catch (error) {
+      console.error('[Manager Login Error]', error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -845,6 +850,45 @@ export async function registerRoutes(
       res.json(dueVehicles);
     } catch (error) {
       console.error("Error fetching service due vehicles:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/vehicles/:id", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const { vrm, make, model, fleetNumber, vehicleCategory, motDue } = req.body;
+      
+      const vehicle = await storage.getVehicleById(vehicleId);
+      if (!vehicle) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      await storage.updateVehicle(vehicleId, {
+        vrm,
+        make,
+        model,
+        fleetNumber,
+        vehicleCategory,
+        motDue: motDue ? new Date(motDue) : null,
+      });
+      
+      // Audit log: Vehicle updated
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: vehicle.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'VEHICLE',
+        entityId: vehicleId,
+        details: { vrm, make, model },
+        req,
+      });
+      
+      const updatedVehicle = await storage.getVehicleById(vehicleId);
+      res.json(updatedVehicle);
+    } catch (error) {
+      console.error("Error updating vehicle:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -1347,6 +1391,29 @@ export async function registerRoutes(
     }
   });
 
+  // Update document (manager)
+  app.put("/api/manager/documents/:id", async (req, res) => {
+    try {
+      const documentId = Number(req.params.id);
+      const { title, description, category, priority, content, fileUrl } = req.body;
+      
+      await storage.updateDocument(documentId, {
+        title,
+        description,
+        category,
+        priority,
+        content,
+        fileUrl,
+      });
+      
+      const updatedDoc = await storage.getDocumentById(documentId);
+      res.json(updatedDoc);
+    } catch (error) {
+      console.error("Error updating document:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Delete document (manager)
   app.delete("/api/manager/documents/:id", async (req, res) => {
     try {
@@ -1713,6 +1780,18 @@ export async function registerRoutes(
       res.json(reminder);
     } catch (error) {
       console.error("Error dismissing reminder:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Delete reminder
+  app.delete("/api/reminders/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteReminder(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -2188,7 +2267,7 @@ export async function registerRoutes(
   // Clock in
   app.post("/api/timesheets/clock-in", async (req, res) => {
     try {
-      const { companyId, driverId, depotId, latitude, longitude } = req.body;
+      const { companyId, driverId, depotId, latitude, longitude, accuracy, manualSelection } = req.body;
       
       if (!companyId || !driverId || !depotId || !latitude || !longitude) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2199,7 +2278,9 @@ export async function registerRoutes(
         Number(driverId),
         Number(depotId),
         latitude,
-        longitude
+        longitude,
+        accuracy ? Number(accuracy) : undefined,
+        manualSelection === true
       );
       
       res.json(timesheet);
@@ -2212,7 +2293,7 @@ export async function registerRoutes(
   // Clock out
   app.post("/api/timesheets/clock-out", async (req, res) => {
     try {
-      const { timesheetId, latitude, longitude } = req.body;
+      const { timesheetId, latitude, longitude, accuracy } = req.body;
       
       if (!timesheetId || !latitude || !longitude) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -2221,7 +2302,8 @@ export async function registerRoutes(
       const timesheet = await storage.clockOut(
         Number(timesheetId),
         latitude,
-        longitude
+        longitude,
+        accuracy ? Number(accuracy) : undefined
       );
       
       res.json(timesheet);

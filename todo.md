@@ -424,3 +424,167 @@
 - [x] Add "Drivers" menu item to navigation
 - [x] Backend API for driver CRUD operations
 - [ ] Test driver management workflow end-to-end
+
+## Drivers Page Bug Fixes
+
+- [ ] Fix nested anchor tag error in Drivers component
+- [ ] Test Add Driver button functionality
+- [ ] Verify driver creation works end-to-end
+
+
+## CRITICAL: Complete Feature Testing & Bug Fixes (Pre-Deployment)
+
+### Drivers Management Page
+- [x] Fix driver edit dropdown (3 dots menu not working)
+- [x] Fix driver delete functionality
+- [ ] Test add driver form submission
+- [ ] Test driver search functionality
+- [ ] Test driver status indicators (On Shift, Starting Soon, Off Shift)
+- [ ] Test driver vehicle assignment
+- [ ] Test driver location tracking display
+
+### Manager Dashboard
+- [ ] Test all dashboard widgets load correctly
+- [ ] Test VOR widget link navigation
+- [ ] Test compliance countdown widget
+- [ ] Test fuel intelligence widget
+- [ ] Test all stat cards display correct data
+- [ ] Test dashboard filters and date ranges
+
+### Fleet Management
+- [ ] Test vehicle list loads correctly
+- [ ] Test vehicle search and filters
+- [ ] Test add new vehicle form
+- [ ] Test edit vehicle functionality
+- [ ] Test delete vehicle functionality
+- [ ] Test VOR status toggle
+- [ ] Test vehicle assignment to drivers
+
+### Live Tracking
+- [ ] Test map loads with OpenStreetMap
+- [ ] Test driver location markers display
+- [ ] Test real-time location updates
+- [ ] Test map controls (zoom, pan)
+- [ ] Test driver info popups
+
+### Inspections & Defects
+- [ ] Test create new inspection
+- [ ] Test inspection form submission
+- [ ] Test defect reporting
+- [ ] Test defect status updates
+- [ ] Test defect assignment to vehicles
+- [ ] Test inspection history view
+
+### Fuel Intelligence
+- [ ] Test fuel entry form
+- [ ] Test MPG calculations
+- [ ] Test fuel fraud detection alerts
+- [ ] Test fuel analytics charts
+- [ ] Test fuel cost analysis
+
+### Reports
+- [ ] Test all report types generate correctly
+- [ ] Test CSV export functionality
+- [ ] Test PDF export functionality
+- [ ] Test report filters and date ranges
+- [ ] Test report data accuracy
+
+### Driver Dashboard (Driver View)
+- [ ] Test driver login
+- [ ] Test driver can start shift
+- [ ] Test driver can end shift
+- [ ] Test driver can submit inspection
+- [ ] Test driver can report defects
+- [ ] Test driver can view assigned vehicle
+- [ ] Test driver can update location
+
+### Authentication & Permissions
+- [ ] Test manager login
+- [ ] Test driver login
+- [ ] Test role-based access control
+- [ ] Test unauthorized access prevention
+- [ ] Test session persistence
+
+### Mobile Responsiveness
+- [ ] Test all pages on mobile viewport
+- [ ] Test touch interactions work correctly
+- [ ] Test mobile navigation menu
+- [ ] Test forms are usable on mobile
+
+
+## Identified Placeholders & Non-Functional Elements
+
+### Authentication & Session Management
+- [x] Fix hardcoded companyId = 1 in FleetHierarchy.tsx (line 39)
+- [x] Fix hardcoded companyId = 1 in PayRates.tsx (line 45)
+- [x] Fix hardcoded userId = 1 in NotificationCenter.tsx (line 34)
+- [x] Fix hardcoded companyId = 1 in BroadcastNotification.tsx (line 99)
+
+### Manager Layout & Navigation
+- [x] Implement global search functionality in ManagerLayout.tsx (line 144-148)
+- [ ] Test all sidebar navigation links work correctly
+- [ ] Verify all dropdown menus function properly
+
+### Dashboard Widgets
+- [ ] Test all dashboard widget links navigate correctly
+- [ ] Verify all stat cards display real data (not hardcoded)
+- [ ] Test dashboard date range filters work
+
+### Fleet Management
+- [ ] Test vehicle add form submission
+- [ ] Test vehicle edit functionality
+- [ ] Test vehicle delete functionality
+- [ ] Test vehicle search and filters
+- [ ] Verify VOR status toggle works
+
+### Documents Management
+- [ ] Test document upload functionality
+- [ ] Test document download functionality
+- [ ] Test document search and filters
+- [ ] Verify document categories work correctly
+
+### Geofences
+- [ ] Test geofence creation with map click
+- [ ] Test geofence edit functionality
+- [ ] Test geofence delete functionality
+- [ ] Verify geofence alerts trigger correctly
+
+### User Management
+- [ ] Test add user form submission
+- [ ] Test edit user functionality
+- [ ] Test delete user functionality
+- [ ] Test user search and filters
+- [ ] Verify role assignment works
+
+### Reminders
+- [ ] Test reminder creation
+- [ ] Test reminder snooze functionality
+- [ ] Test reminder complete functionality
+- [ ] Test recurring reminders work
+- [ ] Verify reminder notifications trigger
+
+### Broadcast Notifications
+- [ ] Test broadcast notification sending
+- [ ] Test recipient selection (all/active/specific)
+- [ ] Test notification delivery via push/SMS/email
+- [ ] Verify notification history records correctly
+
+### Audit Logs
+- [ ] Test audit log filtering by action
+- [ ] Test audit log filtering by entity
+- [ ] Test audit log search functionality
+- [ ] Verify all actions are logged correctly
+
+### Mechanic Dashboard
+- [ ] Test work order creation
+- [ ] Test parts list addition
+- [ ] Test work order completion
+- [ ] Verify cost calculations work correctly
+
+### Driver-Facing Features
+- [ ] Test driver clock in/out functionality
+- [ ] Test defect report submission
+- [ ] Test fuel entry submission
+- [ ] Test vehicle inspection submission
+- [ ] Test end of shift check submission
+- [ ] Verify driver notification center works

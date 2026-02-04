@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Clock, MapPin, CheckCircle, XCircle, Loader2, AlertCircle, Navigation } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { calculateDistance, isPointInGeofence } from '@shared/geofenceUtils';
 
 interface Geofence {
   id: number;
@@ -10,6 +18,8 @@ interface Geofence {
   latitude: string;
   longitude: string;
   radiusMeters: number;
+  geofenceType: 'circle' | 'polygon';
+  polygonCoordinates?: Array<{ lat: number; lng: number }>;
 }
 
 interface ActiveTimesheet {
@@ -26,9 +36,11 @@ interface ClockInOutProps {
 }
 
 export default function ClockInOut({ companyId, driverId, driverName }: ClockInOutProps) {
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [nearestDepot, setNearestDepot] = useState<{ depot: Geofence; distance: number } | null>(null);
+  const [selectedDepotId, setSelectedDepotId] = useState<number | null>(null);
+  const [showManualSelection, setShowManualSelection] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch geofences (depots)
@@ -64,7 +76,8 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
       (position) => {
         setCurrentLocation({
           lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
         });
         setLocationError(null);
       },
@@ -109,7 +122,15 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
   const clockInMutation = useMutation({
     mutationFn: async () => {
       if (!currentLocation) throw new Error('Location not available');
-      if (!nearestDepot) throw new Error('No depot found');
+      
+      // Determine which depot to use
+      const depotId = selectedDepotId || nearestDepot?.depot.id;
+      if (!depotId) throw new Error('No depot selected');
+      
+      // Check GPS accuracy
+      if (currentLocation.accuracy > 100) {
+        throw new Error(`GPS accuracy too low (${Math.round(currentLocation.accuracy)}m). Please wait for better signal.`);
+      }
 
       const response = await fetch('/api/timesheets/clock-in', {
         method: 'POST',
@@ -117,9 +138,11 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
         body: JSON.stringify({
           companyId,
           driverId,
-          depotId: nearestDepot.depot.id,
+          depotId,
           latitude: currentLocation.lat.toString(),
-          longitude: currentLocation.lng.toString()
+          longitude: currentLocation.lng.toString(),
+          accuracy: Math.round(currentLocation.accuracy),
+          manualSelection: !!selectedDepotId
         })
       });
 
@@ -132,6 +155,8 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['active-timesheet', driverId] });
+      setSelectedDepotId(null);
+      setShowManualSelection(false);
     }
   });
 
@@ -140,6 +165,11 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     mutationFn: async () => {
       if (!currentLocation) throw new Error('Location not available');
       if (!activeTimesheet) throw new Error('No active timesheet');
+      
+      // Check GPS accuracy
+      if (currentLocation.accuracy > 100) {
+        throw new Error(`GPS accuracy too low (${Math.round(currentLocation.accuracy)}m). Please wait for better signal.`);
+      }
 
       const response = await fetch('/api/timesheets/clock-out', {
         method: 'POST',
@@ -147,7 +177,8 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
         body: JSON.stringify({
           timesheetId: activeTimesheet.id,
           latitude: currentLocation.lat.toString(),
-          longitude: currentLocation.lng.toString()
+          longitude: currentLocation.lng.toString(),
+          accuracy: Math.round(currentLocation.accuracy)
         })
       });
 
@@ -163,19 +194,10 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     }
   });
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c; // Distance in meters
+  const isWithinAnyGeofence = (location: { lat: number; lng: number }): boolean => {
+    return geofences.some(geofence => 
+      isPointInGeofence(location, geofence)
+    );
   };
 
   const formatDuration = (minutes: number | null): string => {
@@ -192,7 +214,13 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     });
   };
 
-  const isWithinGeofence = nearestDepot && nearestDepot.distance <= nearestDepot.depot.radiusMeters;
+  // Check if within geofence (works for both circle and polygon)
+  const isWithinGeofence = currentLocation && nearestDepot && isPointInGeofence(
+    { lat: currentLocation.lat, lng: currentLocation.lng },
+    nearestDepot.depot
+  );
+  const hasGoodGPS = currentLocation && currentLocation.accuracy <= 100;
+  const canClockIn = currentLocation && hasGoodGPS && (isWithinGeofence || selectedDepotId);
 
   if (loadingTimesheet) {
     return (
@@ -269,9 +297,27 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
                 <span className="text-sm">{locationError}</span>
               </div>
             ) : currentLocation ? (
-              <p className="text-sm text-muted-foreground">
-                {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
-              </p>
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <Navigation className={`h-3 w-3 ${
+                    currentLocation.accuracy <= 20 ? 'text-green-600' :
+                    currentLocation.accuracy <= 50 ? 'text-yellow-600' :
+                    currentLocation.accuracy <= 100 ? 'text-orange-600' :
+                    'text-red-600'
+                  }`} />
+                  <span className={`text-xs ${
+                    currentLocation.accuracy <= 20 ? 'text-green-600' :
+                    currentLocation.accuracy <= 50 ? 'text-yellow-600' :
+                    currentLocation.accuracy <= 100 ? 'text-orange-600' :
+                    'text-red-600'
+                  }`}>
+                    Accuracy: ±{Math.round(currentLocation.accuracy)}m
+                  </span>
+                </div>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -311,6 +357,58 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
         )}
       </Card>
 
+      {/* Manual Depot Selection */}
+      {!activeTimesheet && !isWithinGeofence && geofences.length > 0 && (
+        <Card className="p-6 border-blue-200 bg-blue-50">
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900">Outside Depot Range</h3>
+                <p className="text-sm text-blue-800 mt-1">
+                  You're not within range of any depot. Please select your depot manually:
+                </p>
+              </div>
+            </div>
+            <Select
+              value={selectedDepotId?.toString()}
+              onValueChange={(value) => setSelectedDepotId(Number(value))}
+            >
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder="Select your depot" />
+              </SelectTrigger>
+              <SelectContent>
+                {geofences.map((depot) => (
+                  <SelectItem key={depot.id} value={depot.id.toString()}>
+                    {depot.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedDepotId && (
+              <p className="text-xs text-blue-700">
+                ✓ Manual selection will be recorded in the timesheet
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* GPS Accuracy Warning */}
+      {currentLocation && !hasGoodGPS && (
+        <Card className="p-4 border-orange-200 bg-orange-50">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-orange-900">Low GPS Accuracy</h3>
+              <p className="text-sm text-orange-800 mt-1">
+                Current accuracy: ±{Math.round(currentLocation.accuracy)}m. Please wait for better signal (need ≤100m).
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Clock In/Out Button */}
       <Card className="p-6">
         {activeTimesheet ? (
@@ -338,7 +436,7 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
             size="lg"
             className="w-full h-16 text-lg"
             onClick={() => clockInMutation.mutate()}
-            disabled={!currentLocation || !isWithinGeofence || clockInMutation.isPending}
+            disabled={!canClockIn || clockInMutation.isPending}
           >
             {clockInMutation.isPending ? (
               <>
@@ -354,9 +452,15 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
           </Button>
         )}
 
-        {!activeTimesheet && !isWithinGeofence && nearestDepot && (
+        {!activeTimesheet && !canClockIn && (
           <p className="text-sm text-center text-muted-foreground mt-3">
-            You must be within {nearestDepot.depot.radiusMeters}m of a depot to clock in
+            {!currentLocation
+              ? 'Waiting for location...'
+              : !hasGoodGPS
+              ? 'Waiting for better GPS signal...'
+              : !isWithinGeofence && !selectedDepotId
+              ? 'Select your depot above to clock in'
+              : 'Ready to clock in'}
           </p>
         )}
       </Card>

@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { pushNotificationService } from '@/services/pushNotifications';
+import { session } from '@/lib/session';
 
 interface Notification {
   id: number;
@@ -30,8 +31,8 @@ export default function NotificationCenter() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Get user ID from session (placeholder - implement your auth)
-  const userId = 1; // TODO: Get from auth context
+  const user = session.getUser();
+  const userId = user?.id;
 
   useEffect(() => {
     loadNotifications();

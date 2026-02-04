@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { session } from '@/lib/session';
 
 interface PayRate {
   id: number;
@@ -42,7 +43,8 @@ export default function PayRates() {
   const [bankHolidays, setBankHolidays] = useState<BankHoliday[]>([]);
   const [defaultRate, setDefaultRate] = useState<PayRate | null>(null);
   
-  const companyId = 1; // TODO: Get from auth context
+  const company = session.getCompany();
+  const companyId = company?.id;
 
   useEffect(() => {
     fetchPayRates();
