@@ -346,6 +346,8 @@ export const geofences = pgTable("geofences", {
   latitude: text("latitude").notNull(),
   longitude: text("longitude").notNull(),
   radiusMeters: integer("radius_meters").default(250).notNull(),
+  geofenceType: varchar("geofence_type", { length: 20 }).default("circle").notNull(),
+  polygonCoordinates: jsonb("polygon_coordinates"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
@@ -370,6 +372,9 @@ export const timesheets = pgTable("timesheets", {
   arrivalLongitude: text("arrival_longitude"),
   departureLatitude: text("departure_latitude"),
   departureLongitude: text("departure_longitude"),
+  arrivalAccuracy: integer("arrival_accuracy"),
+  departureAccuracy: integer("departure_accuracy"),
+  manualDepotSelection: boolean("manual_depot_selection").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });

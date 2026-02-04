@@ -36,11 +36,9 @@ export function VORWidget({ companyId }: VORWidgetProps) {
           <AlertTriangle className="h-5 w-5 text-amber-600" />
           Vehicles Off Road
         </h2>
-        <Link href="/manager/fleet">
-          <a className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-            View All
-            <ArrowRight className="h-4 w-4" />
-          </a>
+        <Link href="/manager/fleet" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+          View All
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
 
@@ -105,10 +103,8 @@ export function VORWidget({ companyId }: VORWidgetProps) {
           </div>
 
           {vorCount > 3 && (
-            <Link href="/manager/fleet">
-              <a className="block mt-3 text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
-                View all {vorCount} off-road vehicles →
-              </a>
+            <Link href="/manager/fleet" className="block mt-3 text-center text-sm text-blue-600 hover:text-blue-700 font-medium">
+              View all {vorCount} off-road vehicles →
             </Link>
           )}
         </>
