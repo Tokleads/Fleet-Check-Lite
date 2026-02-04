@@ -33,6 +33,10 @@ export const companies = pgTable("companies", {
     driverHistoryDays: 7
   }),
   
+  // Contact and status
+  contactEmail: text("contact_email"),
+  isActive: boolean("is_active").default(true),
+  
   // Google Drive integration (per-company credentials for white-label)
   googleDriveConnected: boolean("google_drive_connected").default(false),
   driveRootFolderId: text("drive_root_folder_id"),

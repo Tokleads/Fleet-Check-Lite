@@ -34,6 +34,9 @@ import PayRates from './pages/manager/PayRates';
 import FuelIntelligence from './pages/manager/FuelIntelligence';
 import Drivers from './pages/manager/Drivers';
 import Performance from "@/pages/admin/Performance";
+import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminCompanies from "@/pages/admin/Companies";
 import DCEuropeanDemo from "@/pages/demo/DCEuropeanDemo";
 import TruckerTimDemo from "@/pages/demo/TruckerTimDemo";
 import TitanFleetDemo from "@/pages/demo/TitanFleetDemo";
@@ -75,6 +78,9 @@ function Router() {
       <Route path="/manager/user-roles" component={UserRoles} />
       <Route path="/manager/notifications" component={NotificationPreferences} />
       <Route path="/manager/notification-history" component={NotificationHistory} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin/companies" component={AdminCompanies} />
       <Route path="/admin/performance" component={Performance} />
       <Route path="/demo/dc-european" component={DCEuropeanDemo} />
       <Route path="/demo/trucker-tim" component={TruckerTimDemo} />
