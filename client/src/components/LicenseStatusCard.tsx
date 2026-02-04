@@ -3,6 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { 
   Shield, 
   CheckCircle, 
@@ -11,7 +18,8 @@ import {
   Clock, 
   RefreshCw,
   History,
-  Loader2
+  Loader2,
+  FileText
 } from "lucide-react";
 
 interface LicenseStatusCardProps {
@@ -20,11 +28,23 @@ interface LicenseStatusCardProps {
   onVerifyClick: () => void;
 }
 
+interface VerificationHistoryItem {
+  id: number;
+  verifiedAt: string;
+  status: string;
+  licenseStatus: string;
+  penaltyPoints: number;
+  verifiedBy?: string;
+}
+
 export function LicenseStatusCard({ driverId, driverName, onVerifyClick }: LicenseStatusCardProps) {
   const [license, setLicense] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [verificationHistory, setVerificationHistory] = useState<VerificationHistoryItem[]>([]);
 
   const fetchLicenseData = async () => {
     try {
@@ -58,6 +78,29 @@ export function LicenseStatusCard({ driverId, driverName, onVerifyClick }: Licen
   const handleRefresh = () => {
     setRefreshing(true);
     fetchLicenseData();
+  };
+
+  const fetchVerificationHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await fetch(`/api/manager/drivers/${driverId}/license/history`);
+      if (response.ok) {
+        const data = await response.json();
+        setVerificationHistory(data);
+      } else {
+        setVerificationHistory([]);
+      }
+    } catch (error) {
+      console.error("Error fetching verification history:", error);
+      setVerificationHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openHistoryDialog = () => {
+    setHistoryDialogOpen(true);
+    fetchVerificationHistory();
   };
 
   const formatDate = (dateString: string | null) => {
@@ -241,14 +284,91 @@ export function LicenseStatusCard({ driverId, driverName, onVerifyClick }: Licen
             <RefreshCw className="mr-2 h-4 w-4" />
             Re-verify
           </Button>
-          <Button variant="outline" className="flex-1" onClick={() => {
-            // TODO: Open history dialog
-            alert("License history feature coming soon");
-          }}>
+          <Button 
+            variant="outline" 
+            className="flex-1" 
+            onClick={openHistoryDialog}
+            data-testid="button-license-history"
+          >
             <History className="mr-2 h-4 w-4" />
             History
           </Button>
         </div>
+
+        <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <History className="h-5 w-5" />
+                License Verification History
+              </DialogTitle>
+              <DialogDescription>
+                Past verification records for {driverName}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="max-h-[400px] overflow-y-auto">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : verificationHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    No verification history available yet.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    History will appear after license verifications are performed.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {verificationHistory.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="border rounded-lg p-3 space-y-2"
+                      data-testid={`history-item-${item.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {formatDate(item.verifiedAt)}
+                        </span>
+                        <Badge className={
+                          item.licenseStatus === 'Valid' ? 'bg-green-500' :
+                          item.licenseStatus === 'Expired' ? 'bg-red-500' :
+                          item.licenseStatus === 'Suspended' ? 'bg-orange-500' :
+                          'bg-gray-500'
+                        }>
+                          {item.licenseStatus}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Status: </span>
+                          <span className={item.status === 'success' ? 'text-green-600' : 'text-red-600'}>
+                            {item.status === 'success' ? 'Verified' : 'Failed'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Points: </span>
+                          <span className={item.penaltyPoints >= 9 ? 'text-red-500 font-medium' : ''}>
+                            {item.penaltyPoints}
+                          </span>
+                        </div>
+                      </div>
+                      {item.verifiedBy && (
+                        <div className="text-xs text-muted-foreground">
+                          Verified by: {item.verifiedBy}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
