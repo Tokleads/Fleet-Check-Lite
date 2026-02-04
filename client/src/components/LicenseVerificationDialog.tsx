@@ -5,7 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, AlertTriangle, Shield } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, AlertTriangle, Shield, Crown, Lock } from "lucide-react";
+
+// Premium feature flag - DVLA API costs £0.60 per lookup
+const DVLA_LICENSE_VERIFICATION_ENABLED = false;
 
 interface LicenseVerificationDialogProps {
   open: boolean;
@@ -28,6 +31,54 @@ export function LicenseVerificationDialog({
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Show premium feature message if not enabled
+  if (!DVLA_LICENSE_VERIFICATION_ENABLED) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-blue-600" />
+              <DialogTitle>DVLA License Verification</DialogTitle>
+            </div>
+            <DialogDescription>
+              Verify driver licenses against the official DVLA database
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col items-center py-8 text-center">
+            <div className="h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mb-4">
+              <Crown className="h-8 w-8 text-amber-600" />
+            </div>
+            <Badge variant="secondary" className="mb-3 bg-amber-100 text-amber-700">
+              Premium Feature
+            </Badge>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              Coming Soon
+            </h3>
+            <p className="text-sm text-slate-600 max-w-xs">
+              Real-time DVLA license verification will be available in premium plans. 
+              This feature verifies driver licenses, penalty points, and entitlements 
+              directly with the government database.
+            </p>
+            <div className="mt-6 p-4 bg-slate-50 rounded-lg w-full">
+              <div className="flex items-center gap-2 text-sm text-slate-600">
+                <Lock className="h-4 w-4" />
+                <span>Requires Premium or Enterprise plan</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   const handleVerify = async () => {
     if (!licenseNumber || licenseNumber.length !== 16) {
