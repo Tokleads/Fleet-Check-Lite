@@ -990,6 +990,6 @@ export const purchaseRequests = pgTable("purchase_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 
-export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).omit({ id: true, createdAt: true });
 export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
 export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
