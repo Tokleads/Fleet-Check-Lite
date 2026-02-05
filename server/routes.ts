@@ -2225,6 +2225,17 @@ export async function registerRoutes(
     }
   });
   
+  // Delete geofence
+  app.delete("/api/geofences/:id", async (req, res) => {
+    try {
+      await storage.deleteGeofence(Number(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete geofence:", error);
+      res.status(500).json({ error: "Failed to delete geofence" });
+    }
+  });
+  
   // ==================== TIMESHEETS ====================
   
   // Get timesheets for company

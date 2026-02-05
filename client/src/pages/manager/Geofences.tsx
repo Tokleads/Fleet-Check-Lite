@@ -282,23 +282,6 @@ export default function Geofences() {
     }
   };
 
-  // Preset depot locations
-  const presetDepots = [
-    { name: "Head Office", latitude: "51.5074", longitude: "-0.1278" },
-    { name: "Clay Lane", latitude: "51.5155", longitude: "-0.0922" },
-    { name: "Woodlands", latitude: "51.4975", longitude: "-0.1357" }
-  ];
-
-  const handleUsePreset = (preset: typeof presetDepots[0]) => {
-    setFormData({
-      name: preset.name,
-      latitude: preset.latitude,
-      longitude: preset.longitude,
-      radiusMeters: 250
-    });
-    setIsAdding(true);
-    setShowMap(false);
-  };
 
   return (
     <ManagerLayout>
@@ -349,27 +332,6 @@ export default function Geofences() {
           </div>
         )}
 
-        {/* Preset Depots */}
-        {geofences && geofences.length === 0 && !isAdding && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <h3 className="font-semibold text-blue-900 mb-3">Quick Setup: Preset Depots</h3>
-            <p className="text-sm text-blue-800 mb-4">
-              Add the three default depot locations with one click:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {presetDepots.map((depot) => (
-                <button
-                  key={depot.name}
-                  onClick={() => handleUsePreset(depot)}
-                  className="flex items-center gap-2 px-4 py-3 bg-white border border-blue-300 rounded-lg hover:bg-blue-100 transition-colors text-left"
-                >
-                  <MapPin className="h-5 w-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">{depot.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Add/Edit Form */}
         {isAdding && (

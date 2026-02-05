@@ -139,6 +139,7 @@ export interface IStorage {
   createGeofence(geofence: InsertGeofence): Promise<Geofence>;
   getGeofencesByCompany(companyId: number): Promise<Geofence[]>;
   updateGeofence(id: number, updates: Partial<Geofence>): Promise<Geofence | undefined>;
+  deleteGeofence(id: number): Promise<void>;
   checkGeofences(driverId: number, companyId: number, latitude: string, longitude: string): Promise<void>;
   
   // Timesheet operations
@@ -1025,6 +1026,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(geofences.id, id))
       .returning();
     return updated || undefined;
+  }
+  
+  async deleteGeofence(id: number): Promise<void> {
+    await db.delete(geofences).where(eq(geofences.id, id));
   }
   
   async checkGeofences(driverId: number, companyId: number, latitude: string, longitude: string): Promise<void> {
