@@ -1108,7 +1108,10 @@ export class DatabaseStorage implements IStorage {
       conditions.push(gte(timesheets.arrivalTime, new Date(startDate)));
     }
     if (endDate) {
-      conditions.push(sql`${timesheets.arrivalTime} <= ${new Date(endDate)}`);
+      // Set end date to end of day (23:59:59.999)
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(sql`${timesheets.arrivalTime} <= ${endOfDay}`);
     }
     
     const sheets = await db.select().from(timesheets)
