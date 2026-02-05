@@ -105,11 +105,11 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     const nearest = findNearestGeofence(currentLocation, geofences.filter(g => g.isActive));
     setNearestDepot(nearest);
 
-    // Auto-select first matching geofence if inside one
-    if (matching.length > 0 && !selectedDepotId) {
-      setSelectedDepotId(matching[0].id);
+    // Auto-select first matching geofence if inside one (only if not already selected)
+    if (matching.length > 0) {
+      setSelectedDepotId(prevId => prevId ?? matching[0].id);
     }
-  }, [currentLocation, geofences, selectedDepotId]);
+  }, [currentLocation, geofences]);
 
   // Get GPS accuracy color and status
   const getAccuracyStatus = (accuracy: number | null) => {
