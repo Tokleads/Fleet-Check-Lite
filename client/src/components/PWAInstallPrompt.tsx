@@ -25,28 +25,35 @@ export function PWAInstallPrompt() {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(iOS);
 
+    // Check if user has dismissed before (for all platforms)
+    const dismissedTime = localStorage.getItem('pwa-install-dismissed');
+    if (dismissedTime) {
+      const dismissedAt = parseInt(dismissedTime, 10);
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+      if (Date.now() - dismissedAt < thirtyDaysMs) {
+        // Still within 30 day dismissal period
+        return;
+      }
+    }
+
     // Listen for beforeinstallprompt event (Android/Desktop)
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       
-      // Show prompt after 30 seconds (don't be too aggressive)
+      // Show prompt after 60 seconds (less aggressive)
       setTimeout(() => {
         setShowPrompt(true);
-      }, 30000);
+      }, 60000);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Show iOS prompt if applicable
     if (iOS && !isStandaloneMode) {
-      // Check if user has dismissed before
-      const dismissed = localStorage.getItem('pwa-install-dismissed');
-      if (!dismissed) {
-        setTimeout(() => {
-          setShowPrompt(true);
-        }, 30000);
-      }
+      setTimeout(() => {
+        setShowPrompt(true);
+      }, 60000);
     }
 
     return () => {
@@ -76,12 +83,8 @@ export function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem('pwa-install-dismissed', 'true');
-    
-    // Show again after 7 days
-    setTimeout(() => {
-      localStorage.removeItem('pwa-install-dismissed');
-    }, 7 * 24 * 60 * 60 * 1000);
+    // Store timestamp - won't show again for 30 days
+    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
   };
 
   // Don't show if already installed
