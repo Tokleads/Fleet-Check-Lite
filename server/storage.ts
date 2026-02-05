@@ -18,7 +18,8 @@ import {
   type StagnationAlert, type InsertStagnationAlert,
   type Notification, type InsertNotification,
   type ServiceHistory, type InsertServiceHistory,
-  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs, driverLocations, geofences, timesheets, stagnationAlerts, notifications, serviceHistory
+  type Referral, type InsertReferral,
+  companies, users, vehicles, inspections, fuelEntries, media, vehicleUsage, defects, trailers, documents, documentAcknowledgments, licenseUpgradeRequests, auditLogs, driverLocations, geofences, timesheets, stagnationAlerts, notifications, serviceHistory, referrals
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, gte, count } from "drizzle-orm";
@@ -178,6 +179,14 @@ export interface IStorage {
   dismissReminder(id: number): Promise<any | undefined>;
   getCompany(companyId: number): Promise<any | undefined>;
   getVehicle(vehicleId: number): Promise<any | undefined>;
+  
+  // Referral operations
+  getReferralByCompany(companyId: number): Promise<Referral | undefined>;
+  createReferral(referral: InsertReferral): Promise<Referral>;
+  getReferralByCode(code: string): Promise<Referral | undefined>;
+  getReferralsByReferrer(companyId: number): Promise<Referral[]>;
+  getReferralStats(companyId: number): Promise<{ total: number; signedUp: number; converted: number; rewardsEarned: number }>;
+  updateReferral(id: number, updates: Partial<Referral>): Promise<Referral | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1616,6 +1625,55 @@ export class DatabaseStorage implements IStorage {
   
   async getCompany(companyId: number): Promise<any | undefined> {
     return await this.getCompanyById(companyId);
+  }
+  
+  // Referral operations
+  async getReferralByCompany(companyId: number): Promise<Referral | undefined> {
+    const [referral] = await db.select()
+      .from(referrals)
+      .where(eq(referrals.referrerCompanyId, companyId))
+      .limit(1);
+    return referral || undefined;
+  }
+  
+  async createReferral(referral: InsertReferral): Promise<Referral> {
+    const [newReferral] = await db.insert(referrals).values(referral).returning();
+    return newReferral;
+  }
+  
+  async getReferralByCode(code: string): Promise<Referral | undefined> {
+    const [referral] = await db.select()
+      .from(referrals)
+      .where(eq(referrals.referralCode, code));
+    return referral || undefined;
+  }
+  
+  async getReferralsByReferrer(companyId: number): Promise<Referral[]> {
+    return await db.select()
+      .from(referrals)
+      .where(eq(referrals.referrerCompanyId, companyId))
+      .orderBy(desc(referrals.createdAt));
+  }
+  
+  async getReferralStats(companyId: number): Promise<{ total: number; signedUp: number; converted: number; rewardsEarned: number }> {
+    const allReferrals = await db.select()
+      .from(referrals)
+      .where(eq(referrals.referrerCompanyId, companyId));
+    
+    const total = allReferrals.length;
+    const signedUp = allReferrals.filter(r => r.status === 'signed_up' || r.status === 'converted' || r.status === 'rewarded').length;
+    const converted = allReferrals.filter(r => r.status === 'converted' || r.status === 'rewarded').length;
+    const rewardsEarned = allReferrals.filter(r => r.status === 'rewarded' && r.rewardClaimed).length;
+    
+    return { total, signedUp, converted, rewardsEarned };
+  }
+  
+  async updateReferral(id: number, updates: Partial<Referral>): Promise<Referral | undefined> {
+    const [updated] = await db.update(referrals)
+      .set(updates)
+      .where(eq(referrals.id, id))
+      .returning();
+    return updated;
   }
 }
 export const storage = new DatabaseStorage();

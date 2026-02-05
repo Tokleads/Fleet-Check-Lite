@@ -25,7 +25,8 @@ import {
   FolderOpen,
   Activity,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  Gift
 } from "lucide-react";
 import tenantConfig from "@/config/tenant";
 import { session } from "@/lib/session";
@@ -51,6 +52,7 @@ const navItems = [
   { path: "/manager/user-roles", icon: Users, label: "User Roles" },
   { path: "/manager/notifications", icon: Bell, label: "Notifications" },
   { path: "/manager/license", icon: Shield, label: "License" },
+  { path: "/manager/referrals", icon: Gift, label: "Referrals" },
   { path: "/manager/audit-log", icon: ClipboardList, label: "Audit Log" },
   { path: "/admin/performance", icon: Activity, label: "Performance" },
   { path: "/manager/settings", icon: Settings, label: "Settings" },

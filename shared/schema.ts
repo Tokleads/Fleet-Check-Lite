@@ -1003,3 +1003,22 @@ export const purchaseRequests = pgTable("purchase_requests", {
 export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequests).omit({ id: true, createdAt: true });
 export type PurchaseRequest = typeof purchaseRequests.$inferSelect;
 export type InsertPurchaseRequest = z.infer<typeof insertPurchaseRequestSchema>;
+
+// Referrals - Referral program system
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referrerCompanyId: integer("referrer_company_id").references(() => companies.id).notNull(),
+  referralCode: varchar("referral_code", { length: 20 }).notNull().unique(),
+  referredCompanyId: integer("referred_company_id").references(() => companies.id),
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // pending | signed_up | converted | rewarded
+  rewardType: varchar("reward_type", { length: 50 }), // free_month | credit | discount
+  rewardValue: integer("reward_value"), // e.g., 1 for 1 month free, 50 for £50 credit
+  rewardClaimed: boolean("reward_claimed").default(false),
+  signedUpAt: timestamp("signed_up_at"),
+  convertedAt: timestamp("converted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull()
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({ id: true, createdAt: true });
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = z.infer<typeof insertReferralSchema>;

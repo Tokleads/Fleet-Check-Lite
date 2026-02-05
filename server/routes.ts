@@ -3097,5 +3097,156 @@ export async function registerRoutes(
   const userRolesRoutes = await import("./userRolesRoutes.js");
   app.use("/api/user-roles", userRolesRoutes.default);
   
+  // Referral Program Routes
+  
+  // Generate referral code helper
+  function generateReferralCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = 'TITAN-';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+  
+  // GET /api/referral/code - Get or generate referral code for current company
+  app.get("/api/referral/code", async (req, res) => {
+    try {
+      const { companyId } = req.query;
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      // Check if company already has a referral code
+      let referral = await storage.getReferralByCompany(Number(companyId));
+      
+      if (!referral) {
+        // Generate new unique referral code
+        let code = generateReferralCode();
+        let attempts = 0;
+        while (await storage.getReferralByCode(code) && attempts < 10) {
+          code = generateReferralCode();
+          attempts++;
+        }
+        
+        referral = await storage.createReferral({
+          referrerCompanyId: Number(companyId),
+          referralCode: code,
+          status: 'pending'
+        });
+      }
+      
+      res.json({ referralCode: referral.referralCode });
+    } catch (error) {
+      console.error("Failed to get referral code:", error);
+      res.status(500).json({ error: "Failed to get referral code" });
+    }
+  });
+  
+  // GET /api/referral/stats - Get referral stats for company
+  app.get("/api/referral/stats", async (req, res) => {
+    try {
+      const { companyId } = req.query;
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      const stats = await storage.getReferralStats(Number(companyId));
+      res.json(stats);
+    } catch (error) {
+      console.error("Failed to get referral stats:", error);
+      res.status(500).json({ error: "Failed to get referral stats" });
+    }
+  });
+  
+  // GET /api/referral/list - List all referrals with status
+  app.get("/api/referral/list", async (req, res) => {
+    try {
+      const { companyId } = req.query;
+      if (!companyId) {
+        return res.status(400).json({ error: "Missing companyId" });
+      }
+      
+      const referrals = await storage.getReferralsByReferrer(Number(companyId));
+      
+      // Get referred company names
+      const referralsWithCompanies = await Promise.all(
+        referrals.map(async (r) => {
+          let referredCompanyName = null;
+          if (r.referredCompanyId) {
+            const company = await storage.getCompanyById(r.referredCompanyId);
+            referredCompanyName = company?.name || 'Unknown';
+          }
+          return { ...r, referredCompanyName };
+        })
+      );
+      
+      res.json(referralsWithCompanies);
+    } catch (error) {
+      console.error("Failed to get referral list:", error);
+      res.status(500).json({ error: "Failed to get referral list" });
+    }
+  });
+  
+  // POST /api/referral/validate/:code - Validate a referral code (for signup)
+  app.post("/api/referral/validate/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      if (!code) {
+        return res.status(400).json({ error: "Missing referral code" });
+      }
+      
+      const referral = await storage.getReferralByCode(code.toUpperCase());
+      
+      if (!referral) {
+        return res.status(404).json({ valid: false, error: "Invalid referral code" });
+      }
+      
+      // Get referrer company name
+      const referrerCompany = await storage.getCompanyById(referral.referrerCompanyId);
+      
+      res.json({ 
+        valid: true, 
+        referralCode: referral.referralCode,
+        referrerCompanyName: referrerCompany?.name || 'Titan Fleet Partner'
+      });
+    } catch (error) {
+      console.error("Failed to validate referral code:", error);
+      res.status(500).json({ error: "Failed to validate referral code" });
+    }
+  });
+  
+  // POST /api/referral/apply - Apply referral code when company signs up
+  app.post("/api/referral/apply", async (req, res) => {
+    try {
+      const { referralCode, referredCompanyId } = req.body;
+      if (!referralCode || !referredCompanyId) {
+        return res.status(400).json({ error: "Missing referralCode or referredCompanyId" });
+      }
+      
+      const referral = await storage.getReferralByCode(referralCode.toUpperCase());
+      
+      if (!referral) {
+        return res.status(404).json({ error: "Invalid referral code" });
+      }
+      
+      // Update referral with referred company
+      const updatedReferral = await storage.updateReferral(referral.id, {
+        referredCompanyId: Number(referredCompanyId),
+        status: 'signed_up',
+        signedUpAt: new Date()
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Referral code applied successfully",
+        referral: updatedReferral
+      });
+    } catch (error) {
+      console.error("Failed to apply referral code:", error);
+      res.status(500).json({ error: "Failed to apply referral code" });
+    }
+  });
+  
   return httpServer;
 }

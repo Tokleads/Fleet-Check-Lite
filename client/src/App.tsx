@@ -33,6 +33,7 @@ import NotificationHistory from './pages/manager/NotificationHistory';
 import PayRates from './pages/manager/PayRates';
 import FuelIntelligence from './pages/manager/FuelIntelligence';
 import Drivers from './pages/manager/Drivers';
+import Referrals from './pages/manager/Referrals';
 import Performance from "@/pages/admin/Performance";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -78,6 +79,7 @@ function Router() {
       <Route path="/manager/user-roles" component={UserRoles} />
       <Route path="/manager/notifications" component={NotificationPreferences} />
       <Route path="/manager/notification-history" component={NotificationHistory} />
+      <Route path="/manager/referrals" component={Referrals} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/login" component={AdminLogin} />
       <Route path="/admin/companies" component={AdminCompanies} />
