@@ -3,8 +3,8 @@ import type { UploadedFile } from "express-fileupload";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
-import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema, vehicles } from "@shared/schema";
+import { eq, and, gte, desc } from "drizzle-orm";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema, vehicles, notifications } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
 import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
@@ -2637,6 +2637,41 @@ export async function registerRoutes(
     }
   });
   
+  // Get public broadcast announcements by company code (no auth required - for login page)
+  app.get("/api/notifications/public/:companyCode", async (req, res) => {
+    try {
+      const { companyCode } = req.params;
+      
+      // Get company by code
+      const company = await storage.getCompanyByCode(companyCode.toUpperCase());
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      
+      // Get recent broadcast notifications for this company (last 7 days, max 5)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const broadcasts = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.companyId, company.id),
+            eq(notifications.isBroadcast, true),
+            gte(notifications.createdAt, sevenDaysAgo)
+          )
+        )
+        .orderBy(desc(notifications.createdAt))
+        .limit(5);
+      
+      res.json(broadcasts);
+    } catch (error) {
+      console.error("Failed to fetch public notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
   // Get notifications for current user (both direct and broadcast)
   app.get("/api/notifications", async (req, res) => {
     try {
