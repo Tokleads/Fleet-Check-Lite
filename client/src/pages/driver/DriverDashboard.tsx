@@ -130,12 +130,16 @@ export default function DriverDashboard() {
         </div>
 
         {/* Clock In/Out */}
-        {user?.id && company?.id && (
+        {user?.id && company?.id ? (
           <ClockInOut 
             companyId={company.id} 
             driverId={user.id}
             driverName={user.name || 'Driver'}
           />
+        ) : (
+          <div className="titan-card p-4 text-center text-muted-foreground">
+            <p>Clock in/out requires login. Please log in again.</p>
+          </div>
         )}
 
         {/* GPS Tracking Status */}
