@@ -2,7 +2,9 @@ import type { Express, Request, Response } from "express";
 import type { UploadedFile } from "express-fileupload";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema, vehicles } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
 import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
@@ -778,6 +780,43 @@ export async function registerRoutes(
       }
       console.error("Error creating vehicle:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Approve manually added vehicle (clear pending review flag)
+  app.patch("/api/manager/vehicles/:id/approve", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      
+      const [updated] = await db
+        .update(vehicles)
+        .set({ 
+          pendingReview: false,
+          reviewNotes: null
+        })
+        .where(eq(vehicles.id, vehicleId))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Vehicle not found" });
+      }
+      
+      // Audit log: Vehicle approved
+      const { logAudit } = await import("./auditService");
+      await logAudit({
+        companyId: updated.companyId,
+        userId: req.body.managerId || null,
+        action: 'UPDATE',
+        entity: 'VEHICLE',
+        entityId: vehicleId,
+        details: { vrm: updated.vrm, action: 'APPROVED', previousStatus: 'pending_review' },
+        req,
+      });
+      
+      res.json({ message: "Vehicle approved", vehicle: updated });
+    } catch (error) {
+      console.error("Error approving vehicle:", error);
+      res.status(500).json({ error: "Failed to approve vehicle" });
     }
   });
 

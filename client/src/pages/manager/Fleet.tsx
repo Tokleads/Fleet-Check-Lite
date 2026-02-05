@@ -211,6 +211,22 @@ export default function ManagerFleet() {
     setCurrentPage(1); // Reset to first page when changing items per page
   };
 
+  const handleApproveVehicle = async (vehicleId: number) => {
+    try {
+      const response = await fetch(`/api/manager/vehicles/${vehicleId}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['fleet-vehicles', companyId] });
+        setOpenMenuId(null);
+      }
+    } catch (error) {
+      console.error('Failed to approve vehicle:', error);
+    }
+  };
+
   return (
     <ManagerLayout>
       <div className="space-y-6">
@@ -416,6 +432,12 @@ export default function ManagerFleet() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-bold text-slate-900 text-lg">{vehicle.vrm}</h3>
+                        {vehicle.pendingReview && (
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Review
+                          </span>
+                        )}
                         {vehicle.vor && (
                           <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">
                             VOR
@@ -453,6 +475,15 @@ export default function ManagerFleet() {
                             <FileText className="h-4 w-4" />
                             View Details
                           </button>
+                          {vehicle.pendingReview && (
+                            <button
+                              onClick={() => handleApproveVehicle(vehicle.id)}
+                              className="w-full px-4 py-2 text-left text-sm text-green-700 hover:bg-green-50 flex items-center gap-2"
+                            >
+                              <CheckCircle2 className="h-4 w-4" />
+                              Approve Vehicle
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               setEditingVehicle(vehicle);

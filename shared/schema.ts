@@ -108,6 +108,11 @@ export const vehicles = pgTable("vehicles", {
   costCentreId: integer("cost_centre_id").references(() => costCentres.id),
   departmentId: integer("department_id").references(() => departments.id),
   
+  // Manual entry flagging
+  pendingReview: boolean("pending_review").default(false), // Flagged for manager review
+  addedByDriverId: integer("added_by_driver_id").references(() => users.id), // Driver who manually added
+  reviewNotes: text("review_notes"), // Notes from driver about why manual entry
+  
   createdAt: timestamp("created_at").defaultNow().notNull()
 });
 

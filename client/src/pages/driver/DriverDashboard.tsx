@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DriverLayout } from "@/components/layout/AppShell";
 import { TitanButton } from "@/components/titan-ui/Button";
 import { TitanCard } from "@/components/titan-ui/Card";
@@ -7,13 +7,23 @@ import { TitanInput } from "@/components/titan-ui/Input";
 import { DocumentsPopup } from "@/components/driver/DocumentsPopup";
 import { GPSTrackingStatus } from "@/components/driver/GPSTrackingStatus";
 import ClockInOut from "./ClockInOut";
-import { Search, Clock, ChevronRight, AlertTriangle, Truck, Plus, History, WifiOff, Fuel, AlertOctagon } from "lucide-react";
+import { Search, Clock, ChevronRight, AlertTriangle, Truck, Plus, History, WifiOff, Fuel, AlertOctagon, AlertCircle, CheckCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import type { Vehicle, Inspection, FuelEntry } from "@shared/schema";
 import { useBrand } from "@/hooks/use-brand";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DriverDashboard() {
   const { currentCompany } = useBrand();
@@ -26,6 +36,10 @@ export default function DriverDashboard() {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [fuelEntries, setFuelEntries] = useState<FuelEntry[]>([]);
   const [showDocsPopup, setShowDocsPopup] = useState(true);
+  const [showManualEntryModal, setShowManualEntryModal] = useState(false);
+  const [manualVrm, setManualVrm] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
+  const { toast } = useToast();
 
   const user = session.getUser();
   const company = session.getCompany();
@@ -127,6 +141,67 @@ export default function DriverDashboard() {
     setLocation(`/driver/vehicle/${vehicleId}`);
   };
 
+  const handleOpenManualEntry = () => {
+    setManualVrm(query.toUpperCase().replace(/\s+/g, '')); // Pre-fill with searched VRM
+    setManualNotes("");
+    setShowManualEntryModal(true);
+  };
+
+  const handleManualVehicleSubmit = async () => {
+    if (!company || !user || !manualVrm.trim()) return;
+    
+    try {
+      const response = await fetch('/api/drivers/manual-vehicle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId: company.id,
+          driverId: user.id,
+          vrm: manualVrm.trim(),
+          notes: manualNotes.trim() || undefined
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.vehicleId) {
+          // Vehicle already exists, go to it
+          toast({
+            title: "Vehicle Found",
+            description: "This vehicle already exists in the system.",
+          });
+          handleSelectVehicle(data.vehicleId);
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: data.error || "Failed to add vehicle"
+          });
+        }
+        return;
+      }
+      
+      toast({
+        title: "Vehicle Added",
+        description: "The vehicle has been added and flagged for manager review.",
+      });
+      
+      setShowManualEntryModal(false);
+      // Navigate to the new vehicle
+      if (data.vehicle?.id) {
+        handleSelectVehicle(data.vehicle.id);
+      }
+    } catch (error) {
+      console.error("Failed to add manual vehicle:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to add vehicle. Please try again."
+      });
+    }
+  };
+
   return (
     <DriverLayout>
       <div className="space-y-4">
@@ -192,9 +267,23 @@ export default function DriverDashboard() {
                         >
                             <div className="pt-2 pb-1">
                                 {results.length === 0 ? (
-                                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl p-6 text-center space-y-3">
-                                        <p className="font-medium text-slate-900">Vehicle not found</p>
-                                        <TitanButton variant="outline" size="sm" className="w-full">Request to add</TitanButton>
+                                    <div className="bg-amber-50 border-2 border-dashed border-amber-200 rounded-xl p-6 text-center space-y-3">
+                                        <div className="flex items-center justify-center gap-2 text-amber-700">
+                                            <AlertCircle className="h-5 w-5" />
+                                            <p className="font-medium">Vehicle not found in fleet</p>
+                                        </div>
+                                        <p className="text-sm text-amber-600">
+                                            Can't find this registration? You can add it manually and start your shift. It will be flagged for your manager to verify.
+                                        </p>
+                                        <TitanButton 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="w-full border-amber-400 text-amber-700 hover:bg-amber-100"
+                                            onClick={handleOpenManualEntry}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Vehicle Manually
+                                        </TitanButton>
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
@@ -275,6 +364,70 @@ export default function DriverDashboard() {
       {hasUnreadDocs && showDocsPopup && (
         <DocumentsPopup onClose={() => setShowDocsPopup(false)} />
       )}
+
+      {/* Manual Vehicle Entry Modal */}
+      <Dialog open={showManualEntryModal} onOpenChange={setShowManualEntryModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              Add Vehicle Manually
+            </DialogTitle>
+            <DialogDescription>
+              Enter the registration to add it to your fleet. It will be flagged for your transport manager to review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Vehicle Registration</label>
+              <input
+                type="text"
+                value={manualVrm}
+                onChange={(e) => setManualVrm(e.target.value.toUpperCase())}
+                placeholder="e.g. AB12 CDE"
+                className="w-full h-12 px-4 text-lg font-bold tracking-wider uppercase border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                maxLength={10}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes (optional)</label>
+              <Textarea
+                value={manualNotes}
+                onChange={(e) => setManualNotes(e.target.value)}
+                placeholder="e.g. Hire vehicle, new to fleet, replacement truck..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                This vehicle will be added with a review flag. Your transport manager will be notified to verify the details.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <TitanButton 
+              onClick={handleManualVehicleSubmit}
+              className="w-full"
+              disabled={!manualVrm.trim()}
+            >
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Add & Continue
+            </TitanButton>
+            <TitanButton 
+              variant="ghost" 
+              onClick={() => setShowManualEntryModal(false)}
+              className="w-full text-muted-foreground"
+            >
+              Cancel
+            </TitanButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DriverLayout>
   );
 }

@@ -279,4 +279,67 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// POST /api/drivers/manual-vehicle - Driver adds an unrecognized vehicle for manager review
+router.post("/manual-vehicle", async (req, res) => {
+  try {
+    const { companyId, driverId, vrm, notes } = req.body;
+
+    if (!companyId || !driverId || !vrm) {
+      return res.status(400).json({ error: "Company ID, Driver ID, and VRM are required" });
+    }
+
+    // Normalize VRM (uppercase, remove spaces)
+    const normalizedVrm = vrm.toUpperCase().replace(/\s+/g, '');
+
+    // Check if vehicle already exists
+    const [existingVehicle] = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.companyId, Number(companyId)),
+          eq(vehicles.vrm, normalizedVrm)
+        )
+      );
+
+    if (existingVehicle) {
+      return res.status(400).json({ 
+        error: "Vehicle already exists", 
+        vehicleId: existingVehicle.id 
+      });
+    }
+
+    // Get driver name for notes
+    const [driver] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, Number(driverId)));
+
+    // Create vehicle with pending review flag
+    const [newVehicle] = await db
+      .insert(vehicles)
+      .values({
+        companyId: Number(companyId),
+        vrm: normalizedVrm,
+        make: "Unknown",
+        model: "Pending Review",
+        vehicleCategory: "HGV",
+        pendingReview: true,
+        addedByDriverId: Number(driverId),
+        reviewNotes: notes || `Manually added by driver ${driver?.name || 'Unknown'} - needs manager verification`,
+        active: true
+      })
+      .returning();
+
+    res.status(201).json({
+      message: "Vehicle added for manager review",
+      vehicle: newVehicle,
+      flaggedForReview: true
+    });
+  } catch (error) {
+    console.error("Error adding manual vehicle:", error);
+    res.status(500).json({ error: "Failed to add vehicle" });
+  }
+});
+
 export default router;
