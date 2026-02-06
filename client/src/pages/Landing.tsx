@@ -170,17 +170,17 @@ export default function Landing() {
                                       <div 
                                         key={announcement.id}
                                         className={`p-3 rounded-lg border text-sm ${
-                                          announcement.priority === 'urgent' 
+                                          announcement.priority?.toLowerCase() === 'urgent' 
                                             ? 'bg-red-50 border-red-200 text-red-800'
-                                            : announcement.priority === 'high'
+                                            : announcement.priority?.toLowerCase() === 'high'
                                             ? 'bg-amber-50 border-amber-200 text-amber-800'
                                             : 'bg-blue-50 border-blue-200 text-blue-800'
                                         }`}
                                       >
                                         <div className="flex items-start gap-2">
-                                          {announcement.priority === 'urgent' ? (
+                                          {announcement.priority?.toLowerCase() === 'urgent' ? (
                                             <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                                          ) : announcement.priority === 'high' ? (
+                                          ) : announcement.priority?.toLowerCase() === 'high' ? (
                                             <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                                           ) : (
                                             <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
