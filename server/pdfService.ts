@@ -13,6 +13,7 @@ interface InspectionData {
   odometer: number;
   checklist: any[];
   defects: any[] | null;
+  cabPhotos?: string[];
   hasTrailer: boolean;
   startedAt: string | null;
   completedAt: string | null;
@@ -110,8 +111,32 @@ export function generateInspectionPDF(inspection: InspectionData): PassThrough {
       if (defect.note) {
         doc.fontSize(10).font('Helvetica').text(`   ${defect.note}`);
       }
+      if (defect.photo) {
+        const photoFilename = defect.photo.split('/').pop() || 'photo';
+        doc.fontSize(9).fillColor('#2563eb').text(`   Photo evidence attached: ${photoFilename}`);
+        doc.fillColor('#000000');
+      }
       doc.moveDown(0.3);
     });
+  }
+
+  if (inspection.cabPhotos && inspection.cabPhotos.length > 0) {
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke('#dddddd');
+    doc.moveDown(1);
+
+    doc.fontSize(14).font('Helvetica-Bold').fillColor('#2563eb').text('Cab Condition Photos');
+    doc.fillColor('#000000');
+    doc.moveDown(0.5);
+
+    doc.fontSize(10).font('Helvetica').text(`${inspection.cabPhotos.length} cab cleanliness photo(s) recorded:`);
+    inspection.cabPhotos.forEach((photo: string, idx: number) => {
+      const filename = photo.split('/').pop() || `photo-${idx + 1}`;
+      doc.fontSize(10).font('Helvetica').text(`  ${idx + 1}. ${filename}`);
+    });
+    doc.moveDown(0.5);
+    doc.fontSize(9).fillColor('#666666').text('Photos available in digital records', { oblique: true });
+    doc.fillColor('#000000');
   }
 
   doc.moveDown(2);

@@ -56,6 +56,7 @@ class ApiClient {
     checklist: any;
     defects?: any;
     hasTrailer?: boolean;
+    cabPhotos?: string[];
     startedAt?: string; // ISO timestamp when check started
     completedAt?: string; // ISO timestamp when submitted
     durationSeconds?: number; // Total duration

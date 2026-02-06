@@ -196,6 +196,10 @@ export default function VehicleInspection() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const photoInputRef = useRef<HTMLInputElement>(null);
   
+  const [cabPhotos, setCabPhotos] = useState<{objectPath: string, preview: string}[]>([]);
+  const [isUploadingCabPhoto, setIsUploadingCabPhoto] = useState(false);
+  const cabPhotoInputRef = useRef<HTMLInputElement>(null);
+  
   // DVSA Auditable Timing State
   const [checkStarted, setCheckStarted] = useState(false);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
@@ -415,12 +419,66 @@ export default function VehicleInspection() {
     setDefectPhotoPreview(null);
   };
 
+  const handleCabPhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !company) return;
+    if (cabPhotos.length >= 3) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setIsUploadingCabPhoto(true);
+
+    try {
+      const response = await fetch("/api/defect-photos/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId: company.id,
+          filename: `cab-${file.name}`,
+          contentType: file.type,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to get upload URL");
+
+      const { uploadURL, objectPath } = await response.json();
+
+      const uploadResponse = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      if (!uploadResponse.ok) throw new Error("Failed to upload photo");
+
+      setCabPhotos(prev => [...prev, { objectPath, preview: previewUrl }]);
+      toast({ title: "Photo uploaded", description: "Cab photo captured successfully" });
+    } catch (error) {
+      console.error("Cab photo upload failed:", error);
+      toast({ variant: "destructive", title: "Upload failed", description: "Could not upload photo. Please try again." });
+      URL.revokeObjectURL(previewUrl);
+    } finally {
+      setIsUploadingCabPhoto(false);
+      if (cabPhotoInputRef.current) {
+        cabPhotoInputRef.current.value = "";
+      }
+    }
+  };
+
+  const removeCabPhoto = (index: number) => {
+    setCabPhotos(prev => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   // Progress calculation
   const allItems = sections.flatMap(s => s.items);
   const checkedItems = allItems.filter(i => i.status !== "unchecked");
   const failedItems = allItems.filter(i => i.status === "fail");
   const progress = Math.round((checkedItems.length / allItems.length) * 100);
-  const canSubmit = !!odometer && checkedItems.length === allItems.length;
+  const allItemsChecked = checkedItems.length === allItems.length;
+  const canSubmit = !!odometer && allItemsChecked;
 
   const getSectionProgress = (section: Section) => {
     const checked = section.items.filter(i => i.status !== "unchecked").length;
@@ -477,6 +535,7 @@ export default function VehicleInspection() {
           photo: i.defectPhoto || null
         })) : null,
         hasTrailer: hasTrailer,
+        cabPhotos: cabPhotos.map(p => p.objectPath),
         // DVSA Auditable Timing
         startedAt: startedAt?.toISOString(),
         completedAt: completedAt.toISOString(),
@@ -696,6 +755,86 @@ export default function VehicleInspection() {
             );
           })}
         </div>
+
+        {/* Cab Condition Photos Section - appears when all items checked */}
+        <AnimatePresence>
+          {allItemsChecked && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="titan-card p-4 mt-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-9 w-9 rounded-xl bg-blue-100 grid place-items-center">
+                    <Camera className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900">Cab Condition Photos</div>
+                    <div className="text-[12px] text-slate-500">Take photos showing cab is clean and tidy</div>
+                  </div>
+                  <span className="text-[11px] font-medium bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full" data-testid="badge-recommended">Recommended</span>
+                </div>
+
+                <input
+                  ref={cabPhotoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleCabPhotoSelect}
+                  className="hidden"
+                  data-testid="input-cab-photo"
+                />
+
+                {cabPhotos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {cabPhotos.map((photo, idx) => (
+                      <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-green-200">
+                        <img
+                          src={photo.preview}
+                          alt={`Cab photo ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          data-testid={`img-cab-photo-${idx}`}
+                        />
+                        <button
+                          onClick={() => removeCabPhoto(idx)}
+                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                          data-testid={`button-remove-cab-photo-${idx}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <div className="absolute bottom-1 left-1 bg-green-500 text-white text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Check className="h-2.5 w-2.5" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {isUploadingCabPhoto ? (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      <span className="text-blue-700 text-sm font-medium">Uploading photo...</span>
+                    </div>
+                  </div>
+                ) : cabPhotos.length < 3 ? (
+                  <button
+                    onClick={() => cabPhotoInputRef.current?.click()}
+                    className="w-full p-3 border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-lg text-blue-600 hover:border-blue-300 transition-colors flex items-center justify-center gap-2"
+                    data-testid="button-capture-cab-photo"
+                  >
+                    <Camera className="h-5 w-5" />
+                    <span>{cabPhotos.length === 0 ? 'Take Cab Photo' : `Add Photo (${cabPhotos.length}/3)`}</span>
+                  </button>
+                ) : (
+                  <div className="text-center text-[12px] text-slate-500">Maximum 3 photos reached</div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Defect Bottom Sheet */}
         <AnimatePresence>

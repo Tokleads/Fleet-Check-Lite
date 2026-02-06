@@ -460,6 +460,7 @@ export async function registerRoutes(
         odometer: inspection.odometer,
         checklist: inspection.checklist as any[],
         defects: inspection.defects as any[] | null,
+        cabPhotos: (inspection.cabPhotos as string[] | null) || undefined,
         hasTrailer: inspection.hasTrailer || false,
         startedAt: inspection.startedAt?.toISOString() || null,
         completedAt: inspection.completedAt?.toISOString() || null,

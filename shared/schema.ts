@@ -132,6 +132,7 @@ export const inspections = pgTable("inspections", {
   hasTrailer: boolean("has_trailer").default(false), // Whether trailer was attached
   checklist: jsonb("checklist").notNull(), // Array of check items with pass/fail
   defects: jsonb("defects"), // Array of defect notes
+  cabPhotos: jsonb("cab_photos"), // Array of object storage paths for cab cleanliness photos
   driveFolderId: text("drive_folder_id"),
   
   // DVSA Auditable Timing - records start/end for compliance evidence
