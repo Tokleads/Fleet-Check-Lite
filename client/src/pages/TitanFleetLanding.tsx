@@ -52,9 +52,14 @@ export default function TitanFleetLandingPage() {
             </nav>
 
             <div className="flex items-center gap-4">
+              <Link href="/app">
+                <span className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium cursor-pointer">
+                  Driver Login
+                </span>
+              </Link>
               <Link href="/manager/login">
                 <span className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium cursor-pointer">
-                  Login
+                  Manager Login
                 </span>
               </Link>
               <Link href="/demo">
