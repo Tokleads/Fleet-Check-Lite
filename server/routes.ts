@@ -3339,7 +3339,14 @@ export async function registerRoutes(
 
   app.post("/api/deliveries", async (req, res) => {
     try {
-      const validated = insertDeliverySchema.parse(req.body);
+      const body = { ...req.body };
+      if (typeof body.completedAt === "string") {
+        body.completedAt = new Date(body.completedAt);
+      }
+      if (!body.completedAt) {
+        body.completedAt = new Date();
+      }
+      const validated = insertDeliverySchema.parse(body);
       const delivery = await storage.createDelivery(validated);
       res.status(201).json(delivery);
     } catch (error) {
