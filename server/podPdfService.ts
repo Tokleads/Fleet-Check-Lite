@@ -13,6 +13,8 @@ interface PODData {
   gpsLatitude: string;
   gpsLongitude: string;
   gpsAccuracy?: number;
+  arrivedAt?: string | null;
+  departedAt?: string | null;
   completedAt: string;
   status: string;
   photoCount: number;
@@ -61,6 +63,25 @@ export function generatePODPdf(data: PODData): PassThrough {
   doc.fontSize(14).font('Helvetica-Bold').text('Date & Time', { underline: true });
   doc.moveDown(0.3);
   doc.fontSize(12).font('Helvetica-Bold').text('Completed: ', { continued: true }).font('Helvetica').text(`${dateStr} ${timeStr}`);
+  if (data.arrivedAt) {
+    const arrivedDate = new Date(data.arrivedAt);
+    const arrivedTimeStr = arrivedDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const arrivedDateStr = arrivedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    doc.fontSize(12).font('Helvetica-Bold').text('Arrived: ', { continued: true }).font('Helvetica').text(`${arrivedDateStr} ${arrivedTimeStr}`);
+  }
+  if (data.departedAt) {
+    const departedDate = new Date(data.departedAt);
+    const departedTimeStr = departedDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const departedDateStr = departedDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    doc.fontSize(12).font('Helvetica-Bold').text('Departed: ', { continued: true }).font('Helvetica').text(`${departedDateStr} ${departedTimeStr}`);
+  }
+  if (data.arrivedAt && data.departedAt) {
+    const diffSec = Math.floor((new Date(data.departedAt).getTime() - new Date(data.arrivedAt).getTime()) / 1000);
+    const h = Math.floor(diffSec / 3600);
+    const m = Math.floor((diffSec % 3600) / 60);
+    const durationStr = h > 0 ? `${h}h ${m}m` : `${m} mins`;
+    doc.fontSize(12).font('Helvetica-Bold').text('On-Site Duration: ', { continued: true }).font('Helvetica').text(durationStr);
+  }
   doc.moveDown(1);
 
   doc.fontSize(14).font('Helvetica-Bold').text('Location', { underline: true });

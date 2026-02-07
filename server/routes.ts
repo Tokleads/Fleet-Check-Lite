@@ -3343,6 +3343,12 @@ export async function registerRoutes(
       if (typeof body.completedAt === "string") {
         body.completedAt = new Date(body.completedAt);
       }
+      if (typeof body.arrivedAt === "string") {
+        body.arrivedAt = new Date(body.arrivedAt);
+      }
+      if (typeof body.departedAt === "string") {
+        body.departedAt = new Date(body.departedAt);
+      }
       if (!body.completedAt) {
         body.completedAt = new Date();
       }
@@ -3406,6 +3412,8 @@ export async function registerRoutes(
         gpsLatitude: delivery.gpsLatitude,
         gpsLongitude: delivery.gpsLongitude,
         gpsAccuracy: delivery.gpsAccuracy || undefined,
+        arrivedAt: delivery.arrivedAt ? delivery.arrivedAt.toISOString() : null,
+        departedAt: delivery.departedAt ? delivery.departedAt.toISOString() : null,
         completedAt: delivery.completedAt.toISOString(),
         status: delivery.status,
         photoCount: Array.isArray(delivery.photoUrls) ? (delivery.photoUrls as string[]).length : 0,
@@ -3481,7 +3489,7 @@ export async function registerRoutes(
 
       const { deliveries: deliveryList } = await storage.getDeliveriesByCompany(companyId, filters, 10000, 0);
 
-      const csvHeader = "Date,Time,Driver,Vehicle,Customer,Address,Reference,GPS Lat,GPS Lng,Notes,Status";
+      const csvHeader = "Date,Time,Driver,Vehicle,Customer,Address,Reference,GPS Lat,GPS Lng,Arrived,Departed,On-Site Duration,Notes,Status";
       const csvRows = deliveryList.map((d: any) => {
         const completedAt = new Date(d.completedAt);
         const date = completedAt.toISOString().split('T')[0];
@@ -3490,6 +3498,15 @@ export async function registerRoutes(
           const str = String(val || '').replace(/"/g, '""');
           return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str}"` : str;
         };
+        const arrivedStr = d.arrivedAt ? new Date(d.arrivedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+        const departedStr = d.departedAt ? new Date(d.departedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+        let onSiteDuration = '';
+        if (d.arrivedAt && d.departedAt) {
+          const diffSec = Math.floor((new Date(d.departedAt).getTime() - new Date(d.arrivedAt).getTime()) / 1000);
+          const h = Math.floor(diffSec / 3600);
+          const m = Math.floor((diffSec % 3600) / 60);
+          onSiteDuration = h > 0 ? `${h}h ${m}m` : `${m} mins`;
+        }
         return [
           date,
           time,
@@ -3500,6 +3517,9 @@ export async function registerRoutes(
           escape(d.referenceNumber),
           d.gpsLatitude,
           d.gpsLongitude,
+          arrivedStr,
+          departedStr,
+          onSiteDuration,
           escape(d.deliveryNotes),
           d.status,
         ].join(',');

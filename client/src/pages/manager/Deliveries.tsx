@@ -559,6 +559,44 @@ export default function Deliveries() {
                     </div>
                   </div>
 
+                  {(selectedDelivery.arrivedAt || selectedDelivery.departedAt) && (
+                    <div>
+                      <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Arrival / Departure</h3>
+                      <div className="space-y-1.5">
+                        {selectedDelivery.arrivedAt && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-green-500" />
+                            <p className="text-sm text-slate-700" data-testid="text-detail-arrived">
+                              Arrived: {formatDateTime(selectedDelivery.arrivedAt)}
+                            </p>
+                          </div>
+                        )}
+                        {selectedDelivery.departedAt && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-amber-500" />
+                            <p className="text-sm text-slate-700" data-testid="text-detail-departed">
+                              Departed: {formatDateTime(selectedDelivery.departedAt)}
+                            </p>
+                          </div>
+                        )}
+                        {selectedDelivery.arrivedAt && selectedDelivery.departedAt && (() => {
+                          const diffSec = Math.floor((new Date(selectedDelivery.departedAt).getTime() - new Date(selectedDelivery.arrivedAt).getTime()) / 1000);
+                          const h = Math.floor(diffSec / 3600);
+                          const m = Math.floor((diffSec % 3600) / 60);
+                          const durationStr = h > 0 ? `${h}h ${m.toString().padStart(2, "0")}m` : `${m} mins`;
+                          return (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4 text-slate-400" />
+                              <p className="text-sm text-slate-700" data-testid="text-detail-onsite">
+                                On-Site: {durationStr}
+                              </p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">GPS Location</h3>
                     <div className="flex items-center gap-2">

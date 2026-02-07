@@ -1043,6 +1043,8 @@ export const deliveries = pgTable("deliveries", {
   gpsLatitude: text("gps_latitude").notNull(),
   gpsLongitude: text("gps_longitude").notNull(),
   gpsAccuracy: integer("gps_accuracy"),
+  arrivedAt: timestamp("arrived_at"),
+  departedAt: timestamp("departed_at"),
   completedAt: timestamp("completed_at").notNull(),
   status: varchar("status", { length: 20 }).default("completed").notNull(),
   invoicedAt: timestamp("invoiced_at"),

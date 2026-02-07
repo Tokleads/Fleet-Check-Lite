@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation, useSearch } from "wouter";
 import { api } from "@/lib/api";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, ChevronLeft, MapPin, Check, Loader2, X, Trash2, Package } from "lucide-react";
+import { Camera, ChevronLeft, MapPin, Check, Loader2, X, Trash2, Package, Clock } from "lucide-react";
 import type { Vehicle } from "@shared/schema";
 
 export default function CompleteDelivery() {
@@ -41,6 +41,11 @@ export default function CompleteDelivery() {
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
+  const [arrivedAt, setArrivedAt] = useState<Date | null>(null);
+  const [departedAt, setDepartedAt] = useState<Date | null>(null);
+  const [isOnSite, setIsOnSite] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const checkDate = new Date().toLocaleString("en-GB", {
@@ -60,6 +65,38 @@ export default function CompleteDelivery() {
       loadVehicle(Number(vehicleIdParam));
     }
   }, [vehicleIdParam]);
+
+  useEffect(() => {
+    if (!arrivedAt || departedAt) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - arrivedAt.getTime()) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [arrivedAt, departedAt]);
+
+  const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m`;
+    if (m > 0) return `${m}m ${s.toString().padStart(2, "0")}s`;
+    return `${s}s`;
+  };
+
+  const formatTimeUK = (date: Date) => {
+    return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const handleLogArrival = () => {
+    setArrivedAt(new Date());
+    setIsOnSite(true);
+  };
+
+  const handleLogDeparture = () => {
+    const now = new Date();
+    setDepartedAt(now);
+    setIsOnSite(false);
+  };
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -211,6 +248,8 @@ export default function CompleteDelivery() {
         gpsLatitude: gpsLocation ? String(gpsLocation.lat) : null,
         gpsLongitude: gpsLocation ? String(gpsLocation.lng) : null,
         gpsAccuracy: gpsAccuracy,
+        arrivedAt: arrivedAt ? arrivedAt.toISOString() : null,
+        departedAt: departedAt ? departedAt.toISOString() : null,
         completedAt: new Date().toISOString(),
         status: "completed",
       };
@@ -291,6 +330,66 @@ export default function CompleteDelivery() {
         ) : null}
 
         <div className="space-y-4">
+          <div className="titan-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="h-4 w-4 text-primary" />
+              <h2 className="titan-section">Delivery Timing</h2>
+            </div>
+
+            {!arrivedAt ? (
+              <button
+                type="button"
+                onClick={handleLogArrival}
+                className="w-full flex items-center justify-center gap-3 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-base transition-colors"
+                style={{ minHeight: 56 }}
+                data-testid="button-log-arrival"
+              >
+                <Clock className="h-5 w-5" />
+                Log Arrival
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <span className="text-[13px] font-medium text-green-700">Arrived at {formatTimeUK(arrivedAt)}</span>
+                </div>
+
+                {!departedAt && (
+                  <div className="flex items-center gap-2 text-[13px] text-slate-600" data-testid="text-time-on-site-live">
+                    <Clock className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                    <span>Time on site: <span className="font-semibold text-slate-900">{formatDuration(elapsedSeconds)}</span></span>
+                  </div>
+                )}
+
+                {departedAt && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-amber-600" />
+                      <span className="text-[13px] font-medium text-amber-700">Departed at {formatTimeUK(departedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-[13px] text-slate-600" data-testid="text-on-site-duration">
+                      <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <span>On site: <span className="font-semibold text-slate-900">{formatDuration(Math.floor((departedAt.getTime() - arrivedAt.getTime()) / 1000))}</span></span>
+                    </div>
+                  </div>
+                )}
+
+                {!departedAt && (
+                  <button
+                    type="button"
+                    onClick={handleLogDeparture}
+                    className="w-full flex items-center justify-center gap-3 rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-semibold text-base transition-colors"
+                    style={{ minHeight: 56 }}
+                    data-testid="button-log-departure"
+                  >
+                    <Clock className="h-5 w-5" />
+                    Log Departure
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="titan-card p-4">
             <h2 className="titan-section mb-3">Customer Information</h2>
             <div className="space-y-3">

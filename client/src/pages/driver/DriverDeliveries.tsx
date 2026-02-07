@@ -16,6 +16,8 @@ interface Delivery {
   gpsLongitude?: string;
   photoUrls?: string[];
   signatureUrl?: string;
+  arrivedAt?: string;
+  departedAt?: string;
   completedAt?: string;
   createdAt?: string;
 }
@@ -142,6 +144,21 @@ export default function DriverDeliveries() {
                         )}
                         {(delivery.gpsLatitude && delivery.gpsLongitude) && (
                           <DetailRow icon={<MapPin className="h-4 w-4" />} label="GPS Location" value={`${delivery.gpsLatitude}, ${delivery.gpsLongitude}`} />
+                        )}
+                        {delivery.arrivedAt && (
+                          <DetailRow icon={<Clock className="h-4 w-4" />} label="Arrived" value={formatDate(delivery.arrivedAt)} />
+                        )}
+                        {delivery.departedAt && (
+                          <DetailRow icon={<Clock className="h-4 w-4" />} label="Departed" value={formatDate(delivery.departedAt)} />
+                        )}
+                        {delivery.arrivedAt && delivery.departedAt && (
+                          <DetailRow icon={<Clock className="h-4 w-4" />} label="On Site" value={(() => {
+                            const diff = Math.floor((new Date(delivery.departedAt).getTime() - new Date(delivery.arrivedAt).getTime()) / 1000);
+                            const h = Math.floor(diff / 3600);
+                            const m = Math.floor((diff % 3600) / 60);
+                            if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m`;
+                            return `${m} mins`;
+                          })()} />
                         )}
                         <DetailRow
                           icon={<Camera className="h-4 w-4" />}
