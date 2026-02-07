@@ -64,6 +64,14 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const user = session.getUser();
+  const company = session.getCompany();
+  const companySettings = (company?.settings || {}) as Record<string, any>;
+
+  const filteredNavItems = navItems.filter(item => {
+    if (item.path === "/manager/deliveries" && companySettings.podEnabled === false) return false;
+    if (item.path === "/manager/fuel" && companySettings.fuelEnabled === false) return false;
+    return true;
+  });
 
   const handleLogout = () => {
     session.clear();
@@ -92,7 +100,7 @@ export function ManagerLayout({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = location === item.path || 
               (item.path !== "/manager" && location.startsWith(item.path));
             return (

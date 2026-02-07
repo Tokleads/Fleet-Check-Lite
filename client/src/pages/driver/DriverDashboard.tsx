@@ -312,7 +312,8 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* Delivery Actions */}
+        {/* Delivery Actions - only shown if POD is enabled for this company */}
+        {(company?.settings as any)?.podEnabled !== false && (
         <div className="space-y-3">
           <div 
             className="titan-card p-4 cursor-pointer hover:shadow-md transition-shadow"
@@ -348,6 +349,7 @@ export default function DriverDashboard() {
             </div>
           </div>
         </div>
+        )}
 
         {/* GPS Tracking - runs silently in background */}
         {user?.id && (

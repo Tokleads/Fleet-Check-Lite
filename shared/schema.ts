@@ -30,6 +30,7 @@ export const companies = pgTable("companies", {
     fuelEnabled: true,
     adblueEnabled: true,
     collisionsEnabled: true,
+    podEnabled: true,
     driverHistoryDays: 7
   }),
   

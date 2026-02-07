@@ -1547,6 +1547,28 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== COMPANY FEATURE SETTINGS ====================
+
+  app.patch("/api/manager/company/:companyId/settings", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+      const { settings } = req.body;
+      if (!settings || typeof settings !== "object") {
+        return res.status(400).json({ error: "Invalid settings" });
+      }
+      const company = await storage.getCompanyById(companyId);
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+      const mergedSettings = { ...(company.settings as Record<string, any>), ...settings };
+      const updated = await storage.updateCompany(companyId, { settings: mergedSettings });
+      res.json(updated);
+    } catch (error) {
+      console.error("Failed to update company settings:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ==================== GOOGLE DRIVE SETTINGS ====================
   
   // Update Google Drive settings for company

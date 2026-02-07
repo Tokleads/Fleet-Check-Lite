@@ -5,10 +5,44 @@ import { TitanInput } from "@/components/titan-ui/Input";
 import { LogoUploader } from "@/components/LogoUploader";
 import { useBrand } from "@/hooks/use-brand";
 import { session } from "@/lib/session";
-import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink, Shield, Smartphone, Users, Edit, Plus, Trash2, UserCog } from "lucide-react";
+import { Palette, HardDrive, RefreshCw, Check, X, Loader2, ExternalLink, Shield, Smartphone, Users, Edit, Plus, Trash2, UserCog, Settings2, Package } from "lucide-react";
 import type { User } from "@shared/schema";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+function FeatureToggle({ label, description, enabled, onToggle }: { label: string; description: string; enabled: boolean; onToggle: (enabled: boolean) => Promise<void> }) {
+  const [loading, setLoading] = useState(false);
+  const [value, setValue] = useState(enabled);
+
+  useEffect(() => { setValue(enabled); }, [enabled]);
+
+  const handleToggle = async () => {
+    setLoading(true);
+    try {
+      await onToggle(!value);
+      setValue(!value);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-card/50" data-testid={`feature-toggle-${label.toLowerCase().replace(/\s+/g, '-')}`}>
+      <div className="flex-1 mr-4">
+        <p className="font-medium text-sm text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+      <button
+        onClick={handleToggle}
+        disabled={loading}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${value ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+        data-testid={`toggle-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+      </button>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { tenant } = useBrand();
@@ -644,6 +678,61 @@ export default function Settings() {
                             </div>
                         </div>
                     )}
+                </TitanCardContent>
+            </TitanCard>
+
+            {/* Feature Settings Section */}
+            <TitanCard>
+                <TitanCardHeader>
+                    <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                            <Settings2 className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-bold text-foreground">Feature Settings</h2>
+                            <p className="text-sm text-muted-foreground">Enable or disable features for your company.</p>
+                        </div>
+                    </div>
+                </TitanCardHeader>
+                <TitanCardContent className="space-y-4">
+                    <FeatureToggle
+                        label="Proof of Delivery (POD)"
+                        description="Allow drivers to capture delivery proof with photos, signature, GPS, and timing. Disable if your deliveries use a third-party system (e.g. Amazon, DPD)."
+                        enabled={(company?.settings as any)?.podEnabled !== false}
+                        onToggle={async (enabled) => {
+                            if (!company) return;
+                            try {
+                                const res = await fetch(`/api/manager/company/${company.id}/settings`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ settings: { podEnabled: enabled } }),
+                                });
+                                if (res.ok) {
+                                    const updated = await res.json();
+                                    session.setCompany(updated);
+                                }
+                            } catch {}
+                        }}
+                    />
+                    <FeatureToggle
+                        label="Fuel Logging"
+                        description="Allow drivers to record diesel and AdBlue fuel entries."
+                        enabled={(company?.settings as any)?.fuelEnabled !== false}
+                        onToggle={async (enabled) => {
+                            if (!company) return;
+                            try {
+                                const res = await fetch(`/api/manager/company/${company.id}/settings`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ settings: { fuelEnabled: enabled } }),
+                                });
+                                if (res.ok) {
+                                    const updated = await res.json();
+                                    session.setCompany(updated);
+                                }
+                            } catch {}
+                        }}
+                    />
                 </TitanCardContent>
             </TitanCard>
 
