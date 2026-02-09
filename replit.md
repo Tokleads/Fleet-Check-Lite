@@ -101,6 +101,12 @@ Access at `/manager/login` with:
 - `GET /api/manager/trailers/:companyId` - All trailers
 - `POST/PATCH/DELETE /api/manager/vehicles` - Vehicle CRUD
 
+### Messaging API Endpoints
+- `POST /api/messages` - Driver sends message to transport manager (validated sender/company)
+- `GET /api/manager/messages/:companyId` - Get messages for company (paginated, sender sanitized)
+- `GET /api/manager/messages/:companyId/unread-count` - Unread message count
+- `PATCH /api/manager/messages/:id/read` - Mark message as read (company-scoped)
+
 ### Delivery/POD API Endpoints
 - `POST /api/deliveries` - Create delivery with signature, photos, GPS
 - `GET /api/deliveries/driver` - Get driver's deliveries (paginated)
@@ -114,7 +120,16 @@ Access at `/manager/login` with:
 
 ## Recent Changes
 
-### 2026-02-07 (Latest)
+### 2026-02-09 (Latest)
+- **Driver-to-Manager Messaging**: In-app messaging system for fleet communication
+  - Driver: "Message Transport" card on dashboard with compose modal (subject, message, priority)
+  - Manager: "Driver Messages" panel on dashboard with unread count badge, read/unread styling, inline expand
+  - Messages table with sender, subject, content, priority, readAt tracking
+  - Multi-tenant security: sender verified against company, company-scoped reads, sanitized sender data
+  - 30-second auto-polling for new messages on manager dashboard
+  - API: POST /api/messages, GET/PATCH manager message endpoints
+
+### 2026-02-07
 - **Proof of Delivery (POD) System**: Complete delivery capture and management
   - Driver: Mobile-first POD capture with customer name, address, reference, signature pad, up to 5 photos, GPS auto-capture
   - Driver: Delivery history page with status badges and detail view
