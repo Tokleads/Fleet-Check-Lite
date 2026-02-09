@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { HelpTooltip } from "@/components/titan-ui/HelpTooltip";
 
 export default function DriverDashboard() {
   const { currentCompany } = useBrand();
@@ -265,7 +266,7 @@ export default function DriverDashboard() {
 
   return (
     <DriverLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 titan-page-enter">
         {/* Welcome / Status */}
         <div className="space-y-1">
             <h1 className="titan-title">Driver Home</h1>
@@ -359,7 +360,7 @@ export default function DriverDashboard() {
         {(company?.settings as any)?.podEnabled !== false && (
         <div className="space-y-3">
           <div 
-            className="titan-card p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="titan-card titan-btn-press p-4 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => setLocation("/driver/complete-delivery")}
             data-testid="button-complete-delivery"
           >
@@ -368,7 +369,7 @@ export default function DriverDashboard() {
                 <Package className="h-5 w-5 text-[#5B6CFF]" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-slate-900">Complete Delivery</p>
+                <p className="font-semibold text-slate-900">Complete Delivery<HelpTooltip term="POD" /></p>
                 <p className="text-xs text-slate-500">Capture proof of delivery with photos & signature</p>
               </div>
               <ChevronRight className="h-5 w-5 text-slate-400" />
@@ -376,7 +377,7 @@ export default function DriverDashboard() {
           </div>
 
           <div 
-            className="titan-card p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="titan-card titan-btn-press p-4 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => setLocation("/driver/deliveries")}
             data-testid="button-my-deliveries"
           >
@@ -508,7 +509,7 @@ export default function DriverDashboard() {
 
         {/* Message Transport */}
         <div 
-          className="titan-card p-4 cursor-pointer hover:shadow-md transition-shadow"
+          className="titan-card titan-btn-press p-4 cursor-pointer hover:shadow-md transition-shadow"
           onClick={() => setShowMessageModal(true)}
           data-testid="button-message-transport"
         >

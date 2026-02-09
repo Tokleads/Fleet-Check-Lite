@@ -268,7 +268,7 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
   }
 
   return (
-    <div className="container max-w-2xl mx-auto p-4 space-y-6">
+    <div className="container max-w-2xl mx-auto p-4 space-y-6 titan-page-enter">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Time Clock</h1>
@@ -445,7 +445,7 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
         {activeTimesheet ? (
           <Button
             size="lg"
-            className="w-full h-16 text-lg"
+            className="w-full h-16 text-lg titan-btn-press"
             variant="destructive"
             onClick={() => clockOutMutation.mutate()}
             disabled={!currentLocation || clockOutMutation.isPending}
@@ -465,7 +465,7 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
         ) : (
           <Button
             size="lg"
-            className="w-full h-16 text-lg"
+            className="w-full h-16 text-lg titan-btn-press"
             onClick={handleClockInClick}
             disabled={!canClockIn || clockInMutation.isPending}
           >

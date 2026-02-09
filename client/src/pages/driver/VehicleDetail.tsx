@@ -6,7 +6,8 @@ import { useLocation, useRoute } from "wouter";
 import { api } from "@/lib/api";
 import { session } from "@/lib/session";
 import type { Vehicle, Inspection } from "@shared/schema";
-import { ChevronLeft, Truck, FileText, Fuel, AlertOctagon, ChevronRight, Loader2, X, Check, Square } from "lucide-react";
+import { ChevronLeft, Truck, FileText, Fuel, AlertOctagon, ChevronRight, X, Check, Square } from "lucide-react";
+import { SkeletonCard } from "@/components/titan-ui/Skeleton";
 import { motion, AnimatePresence } from "framer-motion";
 
 type DialogState = "none" | "trailer" | "checksheet";
@@ -78,8 +79,10 @@ export default function VehicleDetail() {
   if (isLoading) {
     return (
       <DriverLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="min-h-screen bg-slate-50 p-4 space-y-4 titan-page-enter">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       </DriverLayout>
     );
@@ -103,7 +106,7 @@ export default function VehicleDetail() {
 
   return (
     <DriverLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 titan-page-enter">
         {/* Header */}
         <div className="flex items-center gap-3">
           <TitanButton variant="ghost" size="icon" onClick={() => setLocation("/driver")} className="h-10 w-10 -ml-2" data-testid="button-back">
@@ -381,7 +384,7 @@ function ActionCard({
     <button 
       onClick={onClick}
       data-testid={testId}
-      className="titan-card titan-tap w-full text-left flex items-center gap-3 px-4 py-4 min-h-[68px]"
+      className="titan-card titan-tap titan-btn-press w-full text-left flex items-center gap-3 px-4 py-4 min-h-[68px]"
     >
       <div className={`h-11 w-11 rounded-xl grid place-items-center ${primary ? 'bg-blue-50' : 'bg-slate-100'}`}>
         {icon}

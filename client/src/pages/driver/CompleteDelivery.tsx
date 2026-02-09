@@ -8,6 +8,7 @@ import { useLocation, useSearch } from "wouter";
 import { api } from "@/lib/api";
 import { Textarea } from "@/components/ui/textarea";
 import { Camera, ChevronLeft, MapPin, Check, Loader2, X, Trash2, Package, Clock } from "lucide-react";
+import { HelpTooltip } from "@/components/titan-ui/HelpTooltip";
 import type { Vehicle } from "@shared/schema";
 
 export default function CompleteDelivery() {
@@ -278,7 +279,7 @@ export default function CompleteDelivery() {
 
   return (
     <DriverLayout>
-      <div className="pb-28">
+      <div className="pb-28 titan-page-enter">
         <div className="flex items-center gap-3 mb-4">
           <TitanButton
             variant="ghost"
@@ -291,7 +292,7 @@ export default function CompleteDelivery() {
           </TitanButton>
           <div className="flex-1 min-w-0">
             <h1 className="text-[20px] font-semibold tracking-tight text-slate-900 truncate">
-              Complete Delivery
+              Complete Delivery <HelpTooltip term="POD" />
             </h1>
             <p className="text-[13px] text-slate-500">{checkDate}</p>
           </div>
@@ -569,7 +570,7 @@ export default function CompleteDelivery() {
           <div className="max-w-md mx-auto space-y-2">
             <TitanButton
               size="lg"
-              className="w-full"
+              className="w-full titan-btn-press"
               onClick={handleSubmit}
               isLoading={isSubmitting}
               disabled={!canSubmit}

@@ -26,6 +26,8 @@ import {
   MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
+import { SkeletonCard, SkeletonComplianceScore } from "@/components/titan-ui/Skeleton";
+import { HelpTooltip } from "@/components/titan-ui/HelpTooltip";
 
 interface DriverMessage {
   id: number;
@@ -289,7 +291,7 @@ export default function ManagerDashboard() {
 
   return (
     <ManagerLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 titan-page-enter">
         {/* Hero Header */}
         <div className="bg-gradient-to-br from-[#0F172A] to-slate-800 rounded-2xl p-8 text-white shadow-xl">
           <div className="flex items-center justify-between">
@@ -323,6 +325,14 @@ export default function ManagerDashboard() {
         </div>
 
         {/* KPI Cards */}
+        {statsLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Inspections Today"
@@ -367,6 +377,7 @@ export default function ManagerDashboard() {
             loading={statsLoading}
           />
         </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -419,7 +430,7 @@ export default function ManagerDashboard() {
                   <ClipboardCheck className="h-5 w-5 text-blue-600" />
                   Recent Inspections
                 </h2>
-                <Link href="/manager/inspections" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                <Link href="/manager/inspections" className="text-sm text-blue-600 hover:text-blue-700 font-medium titan-btn-press">
                   View all →
                 </Link>
               </div>
@@ -578,12 +589,10 @@ export default function ManagerDashboard() {
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-blue-600" />
                 Compliance Score
+                <HelpTooltip term="Compliance Score" />
               </h2>
               {complianceLoading ? (
-                <div className="flex flex-col items-center gap-4">
-                  <div className="h-24 w-24 rounded-full bg-slate-100 animate-pulse" />
-                  <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
-                </div>
+                <SkeletonComplianceScore />
               ) : complianceScore ? (
                 <div className="space-y-5">
                   <div className="flex items-center justify-center gap-6">
@@ -612,13 +621,13 @@ export default function ManagerDashboard() {
                   <div className="space-y-3">
                     {[
                       { label: 'Inspections', value: complianceScore.breakdown.inspections, weight: '30%' },
-                      { label: 'Defects', value: complianceScore.breakdown.defects, weight: '25%' },
+                      { label: 'Defects', value: complianceScore.breakdown.defects, weight: '25%', tooltip: 'Defect Escalation' as const },
                       { label: 'MOT', value: complianceScore.breakdown.mot, weight: '25%' },
-                      { label: 'VOR', value: complianceScore.breakdown.vor, weight: '20%' },
+                      { label: 'VOR', value: complianceScore.breakdown.vor, weight: '20%', tooltip: 'VOR' as const },
                     ].map(item => (
                       <div key={item.label} data-testid={`compliance-breakdown-${item.label.toLowerCase()}`}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-slate-600">{item.label} <span className="text-slate-400">({item.weight})</span></span>
+                          <span className="text-xs font-medium text-slate-600">{item.label}{'tooltip' in item && item.tooltip && <HelpTooltip term={item.tooltip} />} <span className="text-slate-400">({item.weight})</span></span>
                           <span className={`text-xs font-bold ${item.value >= 80 ? 'text-emerald-600' : item.value >= 60 ? 'text-amber-600' : 'text-red-600'}`}>{item.value}%</span>
                         </div>
                         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
