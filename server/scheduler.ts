@@ -16,6 +16,7 @@ import {
   checkTaxExpiry, 
   checkServiceDue
 } from './notificationService';
+import { checkDefectEscalation, checkFuelAnomalies } from './notificationTriggers';
 
 let isSchedulerRunning = false;
 let lastRunTime: Date | null = null;
@@ -33,6 +34,8 @@ export async function runNotificationChecks(): Promise<{
     motExpiry: { success: boolean; error?: string };
     taxExpiry: { success: boolean; error?: string };
     serviceDue: { success: boolean; error?: string };
+    defectEscalation: { success: boolean; error?: string };
+    fuelAnomalies: { success: boolean; error?: string };
   };
 }> {
   const timestamp = new Date();
@@ -42,6 +45,8 @@ export async function runNotificationChecks(): Promise<{
     motExpiry: { success: false, error: undefined as string | undefined },
     taxExpiry: { success: false, error: undefined as string | undefined },
     serviceDue: { success: false, error: undefined as string | undefined },
+    defectEscalation: { success: false, error: undefined as string | undefined },
+    fuelAnomalies: { success: false, error: undefined as string | undefined },
   };
 
   // Check MOT expiry
@@ -75,6 +80,28 @@ export async function runNotificationChecks(): Promise<{
     results.serviceDue.success = false;
     results.serviceDue.error = error instanceof Error ? error.message : 'Unknown error';
     console.error('[Scheduler] ✗ Service due check failed:', error);
+  }
+
+  // Check Defect escalation
+  try {
+    await checkDefectEscalation();
+    results.defectEscalation.success = true;
+    console.log('[Scheduler] ✓ Defect escalation check complete');
+  } catch (error) {
+    results.defectEscalation.success = false;
+    results.defectEscalation.error = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Scheduler] ✗ Defect escalation check failed:', error);
+  }
+
+  // Check Fuel anomalies
+  try {
+    await checkFuelAnomalies();
+    results.fuelAnomalies.success = true;
+    console.log('[Scheduler] ✓ Fuel anomaly check complete');
+  } catch (error) {
+    results.fuelAnomalies.success = false;
+    results.fuelAnomalies.error = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Scheduler] ✗ Fuel anomaly check failed:', error);
   }
 
   // Note: License expiry check not implemented yet
@@ -130,8 +157,18 @@ export function startScheduler(): void {
     }
   });
 
+  cron.schedule('0 */4 * * *', async () => {
+    console.log('[Scheduler] Running defect escalation and fuel anomaly checks...');
+    try {
+      await checkDefectEscalation();
+      await checkFuelAnomalies();
+    } catch (error) {
+      console.error('[Scheduler] Error in 4-hourly checks:', error);
+    }
+  });
+
   isSchedulerRunning = true;
-  console.log('[Scheduler] ✓ Notification scheduler started (runs daily at 8:00 AM)');
+  console.log('[Scheduler] ✓ Notification scheduler started (runs daily at 8:00 AM, defect/fuel checks every 4 hours)');
 
   // Run once on startup for immediate check (optional)
   // Comment out if you don't want immediate execution on server start

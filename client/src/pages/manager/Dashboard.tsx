@@ -250,6 +250,21 @@ export default function ManagerDashboard() {
 
   const unreadCount = unreadCountData?.count || 0;
 
+  const { data: complianceScore, isLoading: complianceLoading } = useQuery<{
+    score: number;
+    breakdown: { inspections: number; defects: number; mot: number; vor: number };
+    grade: string;
+  }>({
+    queryKey: ["compliance-score", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/manager/compliance-score/${companyId}`);
+      if (!res.ok) throw new Error("Failed to fetch compliance score");
+      return res.json();
+    },
+    enabled: !!companyId,
+    refetchInterval: 60000,
+  });
+
   async function handleMessageClick(msg: DriverMessage) {
     if (expandedMessageId === msg.id) {
       setExpandedMessageId(null);
@@ -556,6 +571,72 @@ export default function ManagerDashboard() {
                   <span className="text-2xl font-bold text-emerald-600">{users?.length || 0}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Compliance Score Widget */}
+            <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6" data-testid="widget-compliance-score">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-600" />
+                Compliance Score
+              </h2>
+              {complianceLoading ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-24 w-24 rounded-full bg-slate-100 animate-pulse" />
+                  <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
+                </div>
+              ) : complianceScore ? (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-center gap-6">
+                    <div className="relative">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                        <circle cx="48" cy="48" r="40" fill="none"
+                          stroke={complianceScore.score >= 80 ? '#10b981' : complianceScore.score >= 60 ? '#f59e0b' : '#ef4444'}
+                          strokeWidth="8"
+                          strokeDasharray={`${2 * Math.PI * 40}`}
+                          strokeDashoffset={`${2 * Math.PI * 40 * (1 - complianceScore.score / 100)}`}
+                          strokeLinecap="round"
+                          className="transition-all duration-1000"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-slate-900">{complianceScore.score}</span>
+                      </div>
+                    </div>
+                    <div className={`h-14 w-14 rounded-xl flex items-center justify-center text-2xl font-bold text-white shadow-sm ${
+                      complianceScore.score >= 80 ? 'bg-emerald-500' : complianceScore.score >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                    }`} data-testid="compliance-grade">
+                      {complianceScore.grade}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Inspections', value: complianceScore.breakdown.inspections, weight: '30%' },
+                      { label: 'Defects', value: complianceScore.breakdown.defects, weight: '25%' },
+                      { label: 'MOT', value: complianceScore.breakdown.mot, weight: '25%' },
+                      { label: 'VOR', value: complianceScore.breakdown.vor, weight: '20%' },
+                    ].map(item => (
+                      <div key={item.label} data-testid={`compliance-breakdown-${item.label.toLowerCase()}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-slate-600">{item.label} <span className="text-slate-400">({item.weight})</span></span>
+                          <span className={`text-xs font-bold ${item.value >= 80 ? 'text-emerald-600' : item.value >= 60 ? 'text-amber-600' : 'text-red-600'}`}>{item.value}%</span>
+                        </div>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${item.value >= 80 ? 'bg-emerald-500' : item.value >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            style={{ width: `${item.value}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Shield className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                  <p className="text-sm text-slate-500">Unable to load compliance score</p>
+                </div>
+              )}
             </div>
 
              {/* Compliance Countdown Widget */}

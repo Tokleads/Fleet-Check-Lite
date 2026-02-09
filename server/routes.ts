@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { eq, and, gte, desc } from "drizzle-orm";
-import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema, insertDeliverySchema, insertMessageSchema, vehicles, notifications, messages } from "@shared/schema";
+import { insertVehicleSchema, insertInspectionSchema, insertFuelEntrySchema, insertDefectSchema, insertTrailerSchema, insertDocumentSchema, insertLicenseUpgradeRequestSchema, insertDeliverySchema, insertMessageSchema, vehicles, inspections, defects, notifications, messages } from "@shared/schema";
 import { z } from "zod";
 import { dvsaService } from "./dvsa";
 import { generateInspectionPDF, getInspectionFilename } from "./pdfService";
@@ -250,6 +250,21 @@ export async function registerRoutes(
             driverId: inspection.driverId,
             defectCount,
           });
+        });
+
+        // Auto-VOR: Flag vehicle as off-road when inspection fails
+        setImmediate(async () => {
+          try {
+            await storage.updateVehicle(inspection.vehicleId, {
+              vorStatus: true,
+              vorReason: 'FAILED_INSPECTION',
+              vorStartDate: new Date(),
+              vorNotes: `Auto-flagged: Failed inspection by driver (${defectCount} defect${defectCount !== 1 ? 's' : ''})`,
+            });
+            console.log(`[AUTO-VOR] Vehicle ${inspection.vehicleId} flagged as VOR due to failed inspection`);
+          } catch (err) {
+            console.error('[AUTO-VOR] Failed to set VOR status:', err);
+          }
         });
       }
       
@@ -565,6 +580,75 @@ export async function registerRoutes(
 
       res.json({ manager, company });
     } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Compliance score endpoint
+  app.get("/api/manager/compliance-score/:companyId", async (req, res) => {
+    try {
+      const companyId = Number(req.params.companyId);
+
+      const allVehicles = await db.select().from(vehicles).where(and(eq(vehicles.companyId, companyId), eq(vehicles.active, true)));
+      const totalVehicles = allVehicles.length;
+
+      if (totalVehicles === 0) {
+        return res.json({
+          score: 100,
+          breakdown: { inspections: 100, defects: 100, mot: 100, vor: 100 },
+          grade: "A"
+        });
+      }
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayInspections = await db.select().from(inspections).where(and(eq(inspections.companyId, companyId), gte(inspections.createdAt, todayStart)));
+      const inspectedVehicleIds = new Set(todayInspections.map(i => i.vehicleId));
+      const inspectionScore = Math.round((inspectedVehicleIds.size / totalVehicles) * 100);
+
+      const allDefects = await db.select().from(defects).where(eq(defects.companyId, companyId));
+      const totalDefects = allDefects.length;
+      const resolvedDefects = allDefects.filter(d => d.status === 'RESOLVED' || d.status === 'resolved').length;
+      const defectScore = totalDefects === 0 ? 100 : Math.round((resolvedDefects / totalDefects) * 100);
+
+      const now = new Date();
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const motCompliantCount = allVehicles.filter(v => {
+        if (!v.motDue) return false;
+        const motDate = new Date(v.motDue);
+        return motDate > sevenDaysFromNow;
+      }).length;
+      const motScore = Math.round((motCompliantCount / totalVehicles) * 100);
+
+      const vorCount = allVehicles.filter(v => v.vorStatus === true).length;
+      const vorScore = Math.round(((totalVehicles - vorCount) / totalVehicles) * 100);
+
+      const score = Math.round(
+        inspectionScore * 0.30 +
+        defectScore * 0.25 +
+        motScore * 0.25 +
+        vorScore * 0.20
+      );
+
+      let grade: string;
+      if (score >= 90) grade = "A";
+      else if (score >= 80) grade = "B";
+      else if (score >= 70) grade = "C";
+      else if (score >= 60) grade = "D";
+      else grade = "F";
+
+      res.json({
+        score,
+        breakdown: {
+          inspections: inspectionScore,
+          defects: defectScore,
+          mot: motScore,
+          vor: vorScore
+        },
+        grade
+      });
+    } catch (error) {
+      console.error("Failed to calculate compliance score:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { users, vehicles, notifications } from "@shared/schema";
-import { eq, and, lte, gte, sql } from "drizzle-orm";
+import { users, vehicles, notifications, defects, fuelEntries } from "@shared/schema";
+import { eq, and, lte, gte, sql, desc } from "drizzle-orm";
 import { storage } from "./storage";
 
 type NotificationPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
@@ -228,9 +228,117 @@ export async function checkMOTExpiryWarnings(): Promise<{ checked: number; notif
   }
 }
 
+export async function checkDefectEscalation(): Promise<{ checked: number; escalated: number }> {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const openDefects = await db.select().from(defects)
+      .where(and(
+        eq(defects.status, 'OPEN'),
+        lte(defects.createdAt, twentyFourHoursAgo)
+      ));
+    
+    let escalatedCount = 0;
+    
+    for (const defect of openDefects) {
+      const newSeverity = defect.severity === 'LOW' ? 'MEDIUM' 
+        : defect.severity === 'MEDIUM' ? 'HIGH' 
+        : defect.severity === 'HIGH' ? 'CRITICAL' 
+        : 'CRITICAL';
+      
+      if (newSeverity !== defect.severity) {
+        await db.update(defects)
+          .set({ severity: newSeverity, updatedAt: new Date() })
+          .where(eq(defects.id, defect.id));
+        escalatedCount++;
+      }
+      
+      const vehicle = defect.vehicleId ? await storage.getVehicleById(defect.vehicleId) : null;
+      const vrm = vehicle?.vrm || 'Unknown';
+      
+      const managers = await getManagersByCompany(defect.companyId);
+      const hoursOpen = Math.round((Date.now() - new Date(defect.createdAt).getTime()) / 3600000);
+      
+      for (const manager of managers) {
+        await createNotificationHelper({
+          companyId: defect.companyId,
+          senderId: managers[0].id,
+          recipientId: manager.id,
+          title: `Defect Escalated - ${vrm}`,
+          message: `Unresolved defect "${defect.description}" has been open for ${hoursOpen}h. Severity escalated to ${newSeverity}.`,
+          priority: newSeverity === 'CRITICAL' ? 'URGENT' : 'HIGH',
+        });
+      }
+    }
+    
+    console.log(`Defect escalation: ${openDefects.length} checked, ${escalatedCount} escalated`);
+    return { checked: openDefects.length, escalated: escalatedCount };
+  } catch (error) {
+    console.error('checkDefectEscalation error:', error);
+    return { checked: 0, escalated: 0 };
+  }
+}
+
+export async function checkFuelAnomalies(): Promise<{ checked: number; flagged: number }> {
+  try {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const recentEntries = await db.select().from(fuelEntries)
+      .where(gte(fuelEntries.createdAt, oneDayAgo));
+    
+    let flaggedCount = 0;
+    
+    for (const entry of recentEntries) {
+      const historicalEntries = await db.select().from(fuelEntries)
+        .where(and(
+          eq(fuelEntries.vehicleId, entry.vehicleId),
+          eq(fuelEntries.fuelType, entry.fuelType)
+        ))
+        .orderBy(desc(fuelEntries.createdAt))
+        .limit(30);
+      
+      if (historicalEntries.length < 3) continue;
+      
+      const amounts = historicalEntries.map(e => Number(e.litres));
+      const avg = amounts.reduce((a, b) => a + b, 0) / amounts.length;
+      const threshold = avg * 2.5;
+      
+      if (Number(entry.litres) > threshold && avg > 0) {
+        flaggedCount++;
+        
+        const vehicle = await storage.getVehicleById(entry.vehicleId);
+        const driver = await storage.getUser(entry.driverId);
+        const vrm = vehicle?.vrm || 'Unknown';
+        const driverName = driver?.name || 'Unknown driver';
+        
+        const managers = await getManagersByCompany(entry.companyId);
+        
+        for (const manager of managers) {
+          await createNotificationHelper({
+            companyId: entry.companyId,
+            senderId: managers[0].id,
+            recipientId: manager.id,
+            title: `Fuel Anomaly - ${vrm}`,
+            message: `${driverName} logged ${entry.litres}L of ${entry.fuelType} for ${vrm}. This is ${(Number(entry.litres) / avg * 100).toFixed(0)}% of the vehicle average (${avg.toFixed(0)}L). Please investigate.`,
+            priority: 'HIGH',
+          });
+        }
+      }
+    }
+    
+    console.log(`Fuel anomaly check: ${recentEntries.length} entries checked, ${flaggedCount} flagged`);
+    return { checked: recentEntries.length, flagged: flaggedCount };
+  } catch (error) {
+    console.error('checkFuelAnomalies error:', error);
+    return { checked: 0, flagged: 0 };
+  }
+}
+
 export const notificationTriggers = {
   defectReported: triggerDefectReported,
   inspectionFailed: triggerInspectionFailed,
   newDriverWelcome: triggerNewDriverWelcome,
   checkMOTExpiry: checkMOTExpiryWarnings,
+  checkDefectEscalation,
+  checkFuelAnomalies,
 };
