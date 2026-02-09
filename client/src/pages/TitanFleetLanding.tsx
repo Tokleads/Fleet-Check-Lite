@@ -89,7 +89,7 @@ export default function TitanFleetLandingPage() {
                 transition={{ duration: 0.5 }}
                 className="text-sm font-medium text-[#5B6CFF] mb-4"
               >
-                One Subscription. Total Control. Zero Complexity.
+                Built by a Class 1 Driver. Trusted by UK Operators.
               </motion.p>
 
               <motion.h1
@@ -97,9 +97,8 @@ export default function TitanFleetLandingPage() {
                 transition={{ duration: 0.5, delay: 0.05 }}
                 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight mb-6"
               >
-                The Ultimate{" "}
-                <span className="text-[#5B6CFF] underline decoration-[#5B6CFF] decoration-4 underline-offset-4">Command Center</span>
-                {" "}for Modern Fleets
+                GPS. Compliance. Timesheets. POD.{" "}
+                <span className="text-[#5B6CFF] underline decoration-[#5B6CFF] decoration-4 underline-offset-4">One Platform.</span>
               </motion.h1>
 
               <motion.p
@@ -107,7 +106,7 @@ export default function TitanFleetLandingPage() {
                 transition={{ duration: 0.5, delay: 0.1 }}
                 className="text-lg text-slate-600 mb-8 max-w-lg"
               >
-                Why pay for three separate subscriptions? Titan Fleet consolidates compliance, GPS tracking, and automated timesheets into one powerful platform.
+                Stop juggling separate apps for tracking, walk-around checks, driver hours, and proof of delivery. Titan Fleet replaces them all — from £59/month.
               </motion.p>
 
               <motion.div
@@ -169,11 +168,11 @@ export default function TitanFleetLandingPage() {
             </div>
             <div className="flex items-center gap-2 text-slate-700">
               <Check className="h-5 w-5 text-[#5B6CFF]" />
-              <span className="font-medium">SaaS-Free Compliance</span>
+              <span className="font-medium">From £59/month — No Setup Fee</span>
             </div>
           </motion.div>
           <p className="text-center text-sm text-slate-500 mt-4">
-            Used by UK operators before launch · Built with transport managers, not sales teams
+            Designed on the road, not in a boardroom. Every feature tested in real cabs.
           </p>
         </div>
       </section>
@@ -286,27 +285,27 @@ export default function TitanFleetLandingPage() {
           >
             {[
               {
-                title: "Intelligence Hub",
-                subtitle: "Live GPS & Risk Monitoring",
-                description: "Real-time coordinates, speed, and heading data with 5-minute telemetry updates. Our 30-minute stagnation alert flags stationary vehicles for driver safety checks.",
+                title: "Live GPS Tracking",
+                subtitle: "Real-Time Fleet Visibility",
+                description: "Track every vehicle in real-time with 5-minute telemetry updates. 30-minute stagnation alerts flag stationary vehicles automatically. Full route history and live map view.",
                 icon: "📡",
               },
               {
-                title: "Automated Payroll",
-                subtitle: "Depot Geofencing",
-                description: "High-precision geofencing at your sites for automatic clock-in/out. Generate payroll-ready CSV exports for instant invoicing and receipting.",
+                title: "Automated Timesheets",
+                subtitle: "Geofence Clock In/Out",
+                description: "Drivers clock in and out automatically when entering or leaving your depots. Generate payroll-ready CSV exports with hours, overtime, and mileage. No more paper timesheets.",
                 icon: "⏱️",
               },
               {
-                title: "Titan Command",
-                subtitle: "Two-Way Dispatch",
-                description: "Push urgent traffic or site updates to the entire fleet simultaneously. Send 1-to-1 encrypted instructions with instant delivery confirmation.",
-                icon: "📲",
+                title: "Proof of Delivery",
+                subtitle: "Digital Signatures & Photos",
+                description: "Capture customer signatures, photos, and GPS coordinates at every drop. Generate professional POD PDFs instantly. Bulk status updates and full delivery audit trail.",
+                icon: "📦",
               },
               {
-                title: "Professional Compliance",
-                subtitle: "DVSA-Ready Framework",
-                description: "Digital walk-around checks, automated MOT/service alerts, and centralized management for vehicles, drivers, assets, and fuel cards.",
+                title: "DVSA-Ready Compliance",
+                subtitle: "Inspections, Defects & Automation",
+                description: "Digital walk-around checks with timed inspections, photo defect reporting, and auto-VOR. MOT, tax, and service alerts run automatically. Compliance scores grade your fleet A to F.",
                 icon: "✅",
               },
             ].map((feature, index) => (
@@ -343,6 +342,65 @@ export default function TitanFleetLandingPage() {
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
               When DVSA asks questions, your records already have answers.
             </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* More Built-In Features */}
+      <section className="py-20 lg:py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="text-center mb-16"
+          >
+            <motion.h2
+              variants={fadeUp}
+              transition={{ duration: 0.5 }}
+              className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4"
+            >
+              And That's Not All
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-lg text-slate-600 max-w-2xl mx-auto"
+            >
+              Every feature below is already live and working. No roadmap promises.
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {[
+              { title: "Driver-to-Manager Messaging", desc: "Drivers send priority messages directly to transport managers. Unread badges and 30-second auto-polling." },
+              { title: "Auto-VOR on Failed Inspections", desc: "Vehicles are automatically flagged as off-road when an inspection fails. No manual intervention needed." },
+              { title: "Defect Escalation", desc: "Unresolved defects automatically escalate in severity every 24 hours until someone acts on them." },
+              { title: "Fuel Anomaly Detection", desc: "Unusual fuel entries are flagged automatically when they exceed 2.5x the vehicle's rolling average." },
+              { title: "Compliance Score", desc: "Real-time fleet health score graded A to F. Tracks inspections, defects, MOT status, and VOR ratio." },
+              { title: "MOT, Tax & Service Alerts", desc: "Automated daily checks flag upcoming expiries and send notifications to managers before deadlines hit." },
+              { title: "White-Label Branding", desc: "Your logo, your colours, your domain. Each company gets their own branded experience." },
+              { title: "Notification Bell & History", desc: "Real-time in-app notifications for both drivers and managers. Mark as read, filter by priority." },
+              { title: "PDF Reports & CSV Export", desc: "Generate inspection PDFs, delivery PODs, timesheet exports, and delivery CSV files on demand." },
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                variants={fadeUp}
+                transition={{ duration: 0.4, delay: index * 0.05 }}
+                className="bg-slate-50 rounded-xl p-6 border border-slate-100"
+                data-testid={`extra-feature-${index}`}
+              >
+                <h3 className="font-bold text-slate-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-600">{item.desc}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </div>
       </section>
