@@ -121,6 +121,16 @@ Access at `/manager/login` with:
 ## Recent Changes
 
 ### 2026-02-09 (Latest)
+- **Agentic Automation System**: Proactive fleet compliance automation
+  - Auto-VOR: Vehicles automatically flagged as VOR when inspection fails (vorStatus, vorReason, vorStartDate set)
+  - Defect Escalation: Open defects auto-escalate severity after 24h (LOW→MEDIUM→HIGH→CRITICAL) with manager notifications
+  - Fuel Anomaly Detection: Flags fuel entries >2.5x above vehicle's rolling 30-entry average, notifies managers
+  - Compliance Score Widget: Real-time fleet health score (0-100) on manager dashboard with A-F grading
+    - Weighted: inspections 30%, defects 25%, MOT 25%, VOR 20%
+    - Circular SVG progress, breakdown bars, color-coded (green/amber/red)
+  - Scheduler: Daily 8am (MOT/Tax/Service) + 4-hourly (defect escalation, fuel anomalies) via node-cron
+  - Guards against notification spam: only escalates non-CRITICAL defects, skips unchanged severity
+  - API: GET /api/manager/compliance-score/:companyId
 - **Driver-to-Manager Messaging**: In-app messaging system for fleet communication
   - Driver: "Message Transport" card on dashboard with compose modal (subject, message, priority)
   - Manager: "Driver Messages" panel on dashboard with unread count badge, read/unread styling, inline expand
