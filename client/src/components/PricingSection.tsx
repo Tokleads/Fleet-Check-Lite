@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Check, Truck, MapPin, Clock, Shield, Headphones, Code, Building2, Palette } from "lucide-react";
+import { Check, Truck, MapPin, Clock, Shield, Headphones, Code, Building2, Palette, ChevronDown } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 const fadeUp = {
@@ -112,6 +112,108 @@ function getBestValueTier(vehicles: number): string {
   if (vehicles <= 25) return "Growth";
   if (vehicles <= 50) return "Pro";
   return "Scale";
+}
+
+function PricingCard({
+  tier,
+  index,
+  isHighlighted,
+  isMostPopular,
+  mobileVisibleCount,
+  hasMoreFeatures,
+}: {
+  tier: PricingTier;
+  index: number;
+  isHighlighted: boolean;
+  isMostPopular?: boolean;
+  mobileVisibleCount: number;
+  hasMoreFeatures: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className={`relative rounded-2xl p-6 sm:p-8 transition-all duration-300 ${
+        isHighlighted
+          ? "bg-[#22c55e] shadow-xl shadow-[#22c55e]/20 scale-[1.02] ring-2 ring-[#22c55e]"
+          : "bg-slate-800 border border-slate-700"
+      }`}
+      data-testid={`pricing-card-${tier.name.toLowerCase()}`}
+    >
+      {isMostPopular && (
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#0f172a] text-[#22c55e] text-xs font-bold px-4 py-1.5 rounded-full border border-[#22c55e]">
+          MOST POPULAR
+        </div>
+      )}
+
+      <div className="mb-6">
+        <h3 className={`text-lg font-bold mb-1 ${isHighlighted ? "text-[#0f172a]" : "text-white"}`}>
+          {tier.name}
+        </h3>
+        <p className={`text-sm ${isHighlighted ? "text-[#0f172a]/70" : "text-slate-400"}`}>
+          Up to {tier.maxVehicles} vehicles
+        </p>
+      </div>
+
+      <div className="mb-2">
+        <span className={`text-4xl font-bold ${isHighlighted ? "text-[#0f172a]" : "text-white"}`}>
+          £{tier.price}
+        </span>
+        <span className={isHighlighted ? "text-[#0f172a]/70" : "text-slate-400"}>/month</span>
+      </div>
+      <p className={`text-xs mb-6 ${isHighlighted ? "text-[#0f172a]/60" : "text-slate-500"}`}>
+        Per month · Prices exclude VAT
+      </p>
+
+      <ul className="space-y-3 mb-4">
+        {tier.features.map((feature, i) => {
+          const isHiddenOnMobile = !expanded && hasMoreFeatures && i >= mobileVisibleCount;
+          return (
+            <li
+              key={i}
+              className={`flex items-start gap-2 ${isHiddenOnMobile ? "hidden sm:flex" : ""}`}
+            >
+              <Check className={`h-5 w-5 shrink-0 mt-0.5 ${isHighlighted ? "text-[#0f172a]" : "text-[#22c55e]"}`} />
+              <span className={`text-sm ${isHighlighted ? "text-[#0f172a]" : "text-slate-300"}`}>
+                {feature}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      {hasMoreFeatures && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          className={`flex sm:hidden items-center gap-1 text-xs font-medium mb-6 transition-colors ${
+            isHighlighted
+              ? "text-[#0f172a]/70 hover:text-[#0f172a]"
+              : "text-slate-400 hover:text-white"
+          }`}
+          data-testid={`button-expand-${tier.name.toLowerCase()}`}
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          +{tier.features.length - mobileVisibleCount} more features
+        </button>
+      )}
+
+      {(!hasMoreFeatures || expanded) && <div className="mb-4 sm:hidden" />}
+      <div className="hidden sm:block mb-4" />
+
+      <button
+        className={`w-full h-12 font-semibold rounded-xl transition-colors ${
+          isHighlighted
+            ? "bg-[#0f172a] text-white hover:bg-slate-800"
+            : "bg-[#22c55e] text-[#0f172a] hover:bg-[#16a34a]"
+        }`}
+        data-testid={`button-${tier.name.toLowerCase()}-subscribe`}
+      >
+        Start Free Trial
+      </button>
+    </motion.div>
+  );
 }
 
 export default function PricingSection() {
@@ -265,66 +367,19 @@ export default function PricingSection() {
           {pricingTiers.map((tier, index) => {
             const isHighlighted = tier.name === bestValueTier;
             const isMostPopular = tier.popular;
+            const MOBILE_VISIBLE_COUNT = 4;
+            const hasMoreFeatures = tier.features.length > MOBILE_VISIBLE_COUNT;
 
             return (
-              <motion.div
+              <PricingCard
                 key={tier.name}
-                variants={fadeUp}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`relative rounded-2xl p-6 sm:p-8 transition-all duration-300 ${
-                  isHighlighted
-                    ? "bg-[#22c55e] shadow-xl shadow-[#22c55e]/20 scale-[1.02] ring-2 ring-[#22c55e]"
-                    : "bg-slate-800 border border-slate-700"
-                }`}
-                data-testid={`pricing-card-${tier.name.toLowerCase()}`}
-              >
-                {isMostPopular && (
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#0f172a] text-[#22c55e] text-xs font-bold px-4 py-1.5 rounded-full border border-[#22c55e]">
-                    MOST POPULAR
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <h3 className={`text-lg font-bold mb-1 ${isHighlighted ? "text-[#0f172a]" : "text-white"}`}>
-                    {tier.name}
-                  </h3>
-                  <p className={`text-sm ${isHighlighted ? "text-[#0f172a]/70" : "text-slate-400"}`}>
-                    Up to {tier.maxVehicles} vehicles
-                  </p>
-                </div>
-
-                <div className="mb-2">
-                  <span className={`text-4xl font-bold ${isHighlighted ? "text-[#0f172a]" : "text-white"}`}>
-                    £{tier.price}
-                  </span>
-                  <span className={isHighlighted ? "text-[#0f172a]/70" : "text-slate-400"}>/month</span>
-                </div>
-                <p className={`text-xs mb-6 ${isHighlighted ? "text-[#0f172a]/60" : "text-slate-500"}`}>
-                  Per month · Prices exclude VAT
-                </p>
-
-                <ul className="space-y-3 mb-8">
-                  {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className={`h-5 w-5 shrink-0 mt-0.5 ${isHighlighted ? "text-[#0f172a]" : "text-[#22c55e]"}`} />
-                      <span className={`text-sm ${isHighlighted ? "text-[#0f172a]" : "text-slate-300"}`}>
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  className={`w-full h-12 font-semibold rounded-xl transition-colors ${
-                    isHighlighted
-                      ? "bg-[#0f172a] text-white hover:bg-slate-800"
-                      : "bg-[#22c55e] text-[#0f172a] hover:bg-[#16a34a]"
-                  }`}
-                  data-testid={`button-${tier.name.toLowerCase()}-subscribe`}
-                >
-                  Start Free Trial
-                </button>
-              </motion.div>
+                tier={tier}
+                index={index}
+                isHighlighted={isHighlighted}
+                isMostPopular={isMostPopular}
+                mobileVisibleCount={MOBILE_VISIBLE_COUNT}
+                hasMoreFeatures={hasMoreFeatures}
+              />
             );
           })}
         </motion.div>

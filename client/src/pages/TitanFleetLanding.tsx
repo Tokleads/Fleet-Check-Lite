@@ -123,7 +123,7 @@ export default function TitanFleetLandingPage() {
                 </button>
                 <a
                   href="#features"
-                  className="inline-flex items-center justify-center h-14 px-8 bg-white border border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center justify-center h-14 px-8 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 transition-colors shadow-lg"
                 >
                   See how it works
                 </a>
