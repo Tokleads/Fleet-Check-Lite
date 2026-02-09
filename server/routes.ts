@@ -558,6 +558,41 @@ export async function registerRoutes(
     }
   });
 
+  // Driver login
+  app.post("/api/driver/login", async (req, res) => {
+    try {
+      const { companyCode, pin } = req.body;
+      if (!companyCode || !pin) {
+        return res.status(400).json({ error: "Missing company code or PIN" });
+      }
+
+      const company = await storage.getCompanyByCode(companyCode);
+      if (!company) {
+        return res.status(401).json({ error: "Invalid company code" });
+      }
+
+      const driver = await storage.getUserByCompanyAndPin(company.id, pin, "driver");
+      if (!driver) {
+        return res.status(401).json({ error: "Invalid PIN" });
+      }
+
+      res.json({
+        user: {
+          id: driver.id,
+          companyId: driver.companyId,
+          name: driver.name,
+          email: driver.email,
+          role: driver.role,
+          active: driver.active,
+        },
+        company,
+      });
+    } catch (error) {
+      console.error("Driver login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
   // ==================== MANAGER API ROUTES ====================
 
   // Manager login

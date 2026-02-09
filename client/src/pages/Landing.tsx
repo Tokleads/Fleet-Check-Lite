@@ -65,31 +65,34 @@ export default function Landing() {
     setIsLoading(true);
     
     try {
-      const company = await api.getCompanyByCode(companyCode);
-      session.setCompany(company);
-      refreshCompany();
-
       if (mode === "driver") {
-        const mockDriver = {
-          id: 2,
-          companyId: company.id,
-          email: "driver1@company.com",
-          name: "Driver",
-          role: "DRIVER" as const,
-          pin: pin,
+        const response = await fetch("/api/driver/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companyCode, pin }),
+        });
+        
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || "Login failed");
+        }
+        
+        const { user, company } = await response.json();
+        session.setCompany(company);
+        session.setUser({
+          ...user,
+          pin: null,
           password: null,
-          active: true,
           createdAt: new Date(),
           totpSecret: null,
-          totpEnabled: null
-        };
-        session.setUser(mockDriver);
+          totpEnabled: null,
+        });
+        refreshCompany();
         setLocation("/driver");
       } else {
-        toast({
-          title: "Manager Login",
-          description: "Please use /manager/login for manager access",
-        });
+        const company = await api.getCompanyByCode(companyCode);
+        session.setCompany(company);
+        refreshCompany();
         setLocation("/manager/login");
       }
     } catch (error) {
