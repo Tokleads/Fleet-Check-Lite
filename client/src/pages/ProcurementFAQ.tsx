@@ -138,19 +138,19 @@ export default function ProcurementFAQ() {
                 <FileText className="h-6 w-6 text-[#5B6CFF]" />
                 Subscription Pricing
               </h2>
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Starter */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6">
                   <h3 className="text-lg font-bold text-slate-900 mb-1">Starter</h3>
-                  <p className="text-sm text-slate-500 mb-4">1-5 Vehicles</p>
+                  <p className="text-sm text-slate-500 mb-4">1-10 Vehicles</p>
                   <div className="mb-4">
-                    <span className="text-3xl font-bold text-slate-900">£49</span>
+                    <span className="text-3xl font-bold text-slate-900">£59</span>
                     <span className="text-slate-600">/month</span>
                   </div>
                   <ul className="space-y-2 text-sm text-slate-600">
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Up to 5 vehicles
+                      Up to 10 vehicles
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
@@ -158,20 +158,24 @@ export default function ProcurementFAQ() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Full platform access
+                      DVSA-compliant inspections
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Defect management
                     </li>
                   </ul>
                 </div>
 
-                {/* Professional */}
+                {/* Growth */}
                 <div className="bg-[#5B6CFF] text-white rounded-2xl p-6 relative">
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs font-medium px-3 py-1 rounded-full">
                     MOST POPULAR
                   </div>
-                  <h3 className="text-lg font-bold mb-1">Professional</h3>
-                  <p className="text-sm text-blue-100 mb-4">6-25 Vehicles</p>
+                  <h3 className="text-lg font-bold mb-1">Growth</h3>
+                  <p className="text-sm text-blue-100 mb-4">11-25 Vehicles</p>
                   <div className="mb-4">
-                    <span className="text-3xl font-bold">£149</span>
+                    <span className="text-3xl font-bold">£129</span>
                     <span className="text-blue-100">/month</span>
                   </div>
                   <ul className="space-y-2 text-sm text-blue-100">
@@ -181,21 +185,53 @@ export default function ProcurementFAQ() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-white" />
-                      Priority support
+                      GPS tracking included
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-white" />
-                      GPS tracking included
+                      Proof of Delivery (POD)
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-white" />
+                      Priority support
                     </li>
                   </ul>
                 </div>
 
-                {/* Enterprise */}
+                {/* Pro */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6">
-                  <h3 className="text-lg font-bold text-slate-900 mb-1">Enterprise</h3>
-                  <p className="text-sm text-slate-500 mb-4">26+ Vehicles</p>
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Pro</h3>
+                  <p className="text-sm text-slate-500 mb-4">26-50 Vehicles</p>
                   <div className="mb-4">
-                    <span className="text-3xl font-bold text-slate-900">£349</span>
+                    <span className="text-3xl font-bold text-slate-900">£249</span>
+                    <span className="text-slate-600">/month</span>
+                  </div>
+                  <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Up to 50 vehicles
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Geofenced timesheets
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      White-label branding
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Dedicated onboarding
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Scale */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6">
+                  <h3 className="text-lg font-bold text-slate-900 mb-1">Scale</h3>
+                  <p className="text-sm text-slate-500 mb-4">50+ Vehicles</p>
+                  <div className="mb-4">
+                    <span className="text-3xl font-bold text-slate-900">£399</span>
                     <span className="text-slate-600">/month</span>
                   </div>
                   <ul className="space-y-2 text-sm text-slate-600">
@@ -205,11 +241,15 @@ export default function ProcurementFAQ() {
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Dedicated onboarding
+                      Custom integrations
                     </li>
                     <li className="flex items-center gap-2">
                       <Check className="h-4 w-4 text-green-500" />
-                      Custom integrations
+                      SLA guarantee
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-500" />
+                      Account manager
                     </li>
                   </ul>
                 </div>
@@ -365,15 +405,11 @@ export default function ProcurementFAQ() {
       <footer className="bg-slate-900 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-slate-400 text-sm">
-            Document version: January 2025 · CLOVER 44 LTD · Company No. 15940100
+            Document version: February 2026 · CLOVER 44 LTD · Company No. 15940100
           </p>
           <div className="flex justify-center gap-6 mt-4">
-            <Link href="/privacy">
-              <span className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer">Privacy Policy</span>
-            </Link>
-            <Link href="/terms">
-              <span className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer">Terms & Conditions</span>
-            </Link>
+            <a href="mailto:support@titanfleet.co.uk?subject=Privacy%20Policy" className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer">Privacy Policy</a>
+            <a href="mailto:support@titanfleet.co.uk?subject=Terms%20%26%20Conditions" className="text-slate-500 hover:text-slate-300 text-sm cursor-pointer">Terms & Conditions</a>
           </div>
         </div>
       </footer>
