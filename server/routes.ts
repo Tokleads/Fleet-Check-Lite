@@ -2545,7 +2545,7 @@ export async function registerRoutes(
     try {
       const timesheet = await storage.getActiveTimesheet(Number(req.params.driverId));
       if (!timesheet) {
-        return res.status(404).json({ error: "No active timesheet" });
+        return res.json({ timesheet: null });
       }
       res.json(timesheet);
     } catch (error) {

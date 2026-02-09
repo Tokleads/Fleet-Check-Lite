@@ -12,6 +12,10 @@ import FuelEntry from "@/pages/driver/FuelEntry";
 import DefectReport from "@/pages/driver/DefectReport";
 import CompleteDelivery from "@/pages/driver/CompleteDelivery";
 import DriverDeliveries from "@/pages/driver/DriverDeliveries";
+import DriverHistory from "@/pages/driver/DriverHistory";
+import DriverQueue from "@/pages/driver/DriverQueue";
+import DriverSettings from "@/pages/driver/DriverSettings";
+import NotificationCenter from "@/pages/driver/NotificationCenter";
 import ManagerLogin from "@/pages/manager/ManagerLogin";
 import ManagerDashboard from "@/pages/manager/AdvancedDashboard";
 import ManagerInspections from "@/pages/manager/Inspections";
@@ -61,6 +65,10 @@ function Router() {
       <Route path="/driver/defect/:id" component={DefectReport} />
       <Route path="/driver/complete-delivery" component={CompleteDelivery} />
       <Route path="/driver/deliveries" component={DriverDeliveries} />
+      <Route path="/driver/history" component={DriverHistory} />
+      <Route path="/driver/queue" component={DriverQueue} />
+      <Route path="/driver/settings" component={DriverSettings} />
+      <Route path="/driver/notifications" component={NotificationCenter} />
       <Route path="/manager/login" component={ManagerLogin} />
       <Route path="/manager" component={ManagerDashboard} />
       <Route path="/manager/inspections" component={ManagerInspections} />

@@ -68,9 +68,9 @@ export default function ClockInOut({ companyId, driverId, driverName }: ClockInO
     queryKey: ['active-timesheet', driverId],
     queryFn: async () => {
       const response = await fetch(`/api/timesheets/active/${driverId}`);
-      if (response.status === 404) return null;
       if (!response.ok) throw new Error('Failed to fetch active timesheet');
-      return response.json();
+      const data = await response.json();
+      return data.timesheet || null;
     },
     refetchInterval: 30000
   });

@@ -57,7 +57,7 @@ export default function DriverDashboard() {
     if (!user || !company) {
       setLocation('/app');
     }
-  }, [user, company, setLocation]);
+  }, [user?.id, company?.id, setLocation]);
 
   const { data: unreadDocs } = useQuery({
     queryKey: ["unread-documents", company?.id, user?.id],
@@ -103,7 +103,7 @@ export default function DriverDashboard() {
     return () => {
       mounted = false;
     };
-  }, [company, user]);
+  }, [company?.id, user?.id]);
 
   useEffect(() => {
     const fetchAnnouncements = async () => {
