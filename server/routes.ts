@@ -2791,28 +2791,6 @@ export async function registerRoutes(
     }
   });
   
-  // Get notifications for driver
-  app.get("/api/notifications/:driverId", async (req, res) => {
-    try {
-      const notifications = await storage.getDriverNotifications(Number(req.params.driverId));
-      res.json(notifications);
-    } catch (error) {
-      console.error("Failed to fetch notifications:", error);
-      res.status(500).json({ error: "Failed to fetch notifications" });
-    }
-  });
-  
-  // Mark notification as read
-  app.patch("/api/notifications/:id/read", async (req: Request, res: Response) => {
-    try {
-      const notification = await storage.markNotificationRead(Number(req.params.id));
-      res.json(notification);
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-      res.status(500).json({ error: "Failed to update notification" });
-    }
-  });
-  
   // Get public broadcast announcements by company code (no auth required - for login page)
   app.get("/api/notifications/public/:companyCode", async (req, res) => {
     try {
@@ -2900,6 +2878,28 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Failed to get unread count:", error);
       res.status(500).json({ error: "Failed to get unread count" });
+    }
+  });
+
+  // Mark notification as read (parameterized - must come after specific routes)
+  app.patch("/api/notifications/:id/read", async (req: Request, res: Response) => {
+    try {
+      const notification = await storage.markNotificationRead(Number(req.params.id));
+      res.json(notification);
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      res.status(500).json({ error: "Failed to update notification" });
+    }
+  });
+
+  // Get notifications for driver (parameterized - must come after specific routes)
+  app.get("/api/notifications/:driverId", async (req, res) => {
+    try {
+      const notifications = await storage.getDriverNotifications(Number(req.params.driverId));
+      res.json(notifications);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
     }
   });
 
