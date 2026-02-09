@@ -187,6 +187,8 @@ export default function VehicleInspection() {
     initialSections.map((s, i) => ({ ...s, isExpanded: i === 0 }))
   );
   const [odometer, setOdometer] = useState("");
+  const [odometerPreFilled, setOdometerPreFilled] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [defectSheetItem, setDefectSheetItem] = useState<{ sectionId: string; itemId: string } | null>(null);
   const [defectNote, setDefectNote] = useState("");
@@ -271,6 +273,16 @@ export default function VehicleInspection() {
     try {
       const vehicleData = await api.getVehicle(id);
       setVehicle(vehicleData);
+      try {
+        const mileageRes = await fetch(`/api/vehicles/${id}/last-mileage`);
+        const mileageData = await mileageRes.json();
+        if (mileageData.lastMileage) {
+          setOdometer(String(mileageData.lastMileage));
+          setOdometerPreFilled(true);
+        }
+      } catch (e) {
+        // Silent fail - mileage prefill is a convenience, not critical
+      }
     } catch (error) {
       console.error("Failed to load vehicle:", error);
       toast({ variant: "destructive", title: "Error", description: "Failed to load vehicle data" });
@@ -688,72 +700,123 @@ export default function VehicleInspection() {
           )}
         </div>
 
-        <div className="space-y-3 pt-4">
-          {/* Mileage Card - Data Entry Control */}
-          <div className="titan-card p-4">
-            <label className="titan-section-label block mb-2">Mileage (miles)</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              placeholder="Enter current mileage"
-              value={odometer}
-              onChange={(e) => setOdometer(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl px-4 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-              data-testid="input-odometer"
-            />
+        <div className="space-y-3 pt-4 titan-page-enter">
+          {/* Step indicator */}
+          <div className="flex items-center gap-1.5 px-1 mb-2">
+            {Array.from({ length: sections.length + 1 }).map((_, i) => {
+              const isComplete = i === 0 
+                ? !!odometer 
+                : getSectionProgress(sections[i - 1]).complete;
+              const isCurrent = i === currentStep;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setCurrentStep(i)}
+                  className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                    isCurrent ? 'bg-primary scale-y-125' : isComplete ? 'bg-emerald-400' : 'bg-slate-200'
+                  }`}
+                  data-testid={`step-indicator-${i}`}
+                />
+              );
+            })}
+          </div>
+          
+          <div className="text-xs text-slate-500 px-1 mb-1">
+            Step {currentStep + 1} of {sections.length + 1}
           </div>
 
-          {/* Collapsible Sections - Checkpoint Style */}
-          {sections.map((section) => {
+          {/* Step 0: Mileage */}
+          {currentStep === 0 && (
+            <motion.div
+              key="mileage"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="titan-card p-4">
+                <label className="titan-section-label block mb-2">Mileage (miles)</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder={odometerPreFilled ? `Last: ${odometer} miles` : "Enter current mileage"}
+                  value={odometer}
+                  onChange={(e) => { setOdometer(e.target.value); setOdometerPreFilled(false); }}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl px-4 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  data-testid="input-odometer"
+                />
+                {odometerPreFilled && odometer && (
+                  <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                    <Check className="h-3 w-3 text-emerald-500" />
+                    Pre-filled from last inspection
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Checklist sections - one at a time */}
+          {currentStep > 0 && currentStep <= sections.length && (() => {
+            const section = sections[currentStep - 1];
             const { checked, total, complete } = getSectionProgress(section);
             return (
-              <div key={section.id}>
-                {/* Section Header as Checkpoint */}
-                <button
-                  onClick={() => toggleSection(section.id)}
-                  className="titan-card titan-tap w-full flex items-center gap-3 px-4 py-3"
-                >
-                  <div className="h-9 w-9 rounded-xl bg-slate-100 grid place-items-center text-lg">
+              <motion.div
+                key={section.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="titan-card px-4 py-3 mb-3 flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 grid place-items-center text-xl">
                     {section.icon}
                   </div>
-                  <div className="flex-1 text-left">
-                    <div className="font-semibold text-slate-900">{section.title}</div>
-                    <div className="titan-helper">{checked} of {total} checked</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900 text-lg">{section.title}</div>
+                    <div className="text-sm text-slate-500">{checked} of {total} checked</div>
                   </div>
-                  <div className={`rounded-full text-[12px] font-semibold px-2 py-1 ${
-                    complete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {complete ? <Check className="h-4 w-4" /> : checked}
-                  </div>
-                  {section.isExpanded ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                </button>
-
-                {/* Section Items */}
-                <AnimatePresence>
-                  {section.isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-2 space-y-2">
-                        {section.items.map((item, idx) => (
-                          <CheckItemRow
-                            key={item.id}
-                            item={item}
-                            isLast={idx === section.items.length - 1}
-                            onTap={() => handleItemTap(section.id, item.id)}
-                            onLongPress={() => handleItemLongPress(section.id, item.id)}
-                          />
-                        ))}
-                      </div>
-                    </motion.div>
+                  {complete && (
+                    <div className="bg-emerald-100 text-emerald-700 rounded-full p-1.5">
+                      <Check className="h-5 w-5" />
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
+                </div>
+                <div className="space-y-2">
+                  {section.items.map((item, idx) => (
+                    <CheckItemRow
+                      key={item.id}
+                      item={item}
+                      isLast={idx === section.items.length - 1}
+                      onTap={() => handleItemTap(section.id, item.id)}
+                      onLongPress={() => handleItemLongPress(section.id, item.id)}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             );
-          })}
+          })()}
+
+          {/* Navigation buttons */}
+          <div className="flex gap-3 pt-4">
+            {currentStep > 0 && (
+              <button
+                onClick={() => setCurrentStep(prev => prev - 1)}
+                className="flex-1 h-12 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors titan-btn-press"
+                data-testid="button-prev-step"
+              >
+                Previous
+              </button>
+            )}
+            {currentStep < sections.length && (
+              <button
+                onClick={() => setCurrentStep(prev => prev + 1)}
+                className="flex-1 h-12 rounded-xl bg-primary text-white font-semibold hover:bg-primary/90 transition-colors titan-btn-press"
+                data-testid="button-next-step"
+              >
+                {currentStep === 0 ? (odometer ? 'Start Check' : 'Skip Mileage') : 'Next Section'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Cab Condition Photos Section - appears when all items checked */}

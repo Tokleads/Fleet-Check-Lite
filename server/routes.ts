@@ -28,6 +28,18 @@ export async function registerRoutes(
   // Driver management routes
   app.use("/api/drivers", driverRoutes);
   
+  // Feedback endpoint
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      const { type, message, page } = req.body;
+      console.log(`[FEEDBACK] ${type}: ${message} (from ${page})`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to save feedback:", error);
+      res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+
   // Health check endpoints
   app.get("/health", healthCheck);
   app.get("/health/live", livenessProbe);
@@ -210,6 +222,24 @@ export async function registerRoutes(
       res.json(recentVehicles);
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get last recorded mileage for a vehicle
+  app.get("/api/vehicles/:id/last-mileage", async (req, res) => {
+    try {
+      const vehicleId = Number(req.params.id);
+      const results = await db.select({ odometer: inspections.odometer })
+        .from(inspections)
+        .where(eq(inspections.vehicleId, vehicleId))
+        .orderBy(desc(inspections.createdAt))
+        .limit(1);
+      
+      const lastMileage = results.length > 0 ? results[0].odometer : null;
+      res.json({ lastMileage });
+    } catch (error) {
+      console.error("Failed to get last mileage:", error);
+      res.json({ lastMileage: null });
     }
   });
 

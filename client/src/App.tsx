@@ -47,6 +47,7 @@ import ProcurementFAQ from "@/pages/ProcurementFAQ";
 import NotFound from "@/pages/not-found";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 function Router() {
   return (
@@ -105,6 +106,7 @@ function App() {
           <Router />
           <Toaster />
           <PWAInstallPrompt />
+          <FeedbackButton />
         </BrandProvider>
       </QueryClientProvider>
     </ErrorBoundary>
