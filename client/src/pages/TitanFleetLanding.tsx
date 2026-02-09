@@ -409,7 +409,7 @@ export default function TitanFleetLandingPage() {
       <PricingSection />
 
       {/* Founder Section */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section id="founder" className="py-16 lg:py-20 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial="hidden"
@@ -488,9 +488,9 @@ export default function TitanFleetLandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-white mb-4">Platform</h4>
               <ul className="space-y-3">
-                <li><a href="#features" className="text-sm hover:text-white transition-colors">Features</a></li>
-                <li><a href="#pricing" className="text-sm hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">FAQs</a></li>
+                <li><a href="#features" className="text-sm hover:text-white transition-colors" onClick={(e) => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}>Features</a></li>
+                <li><a href="#pricing" className="text-sm hover:text-white transition-colors" onClick={(e) => { e.preventDefault(); document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }}>Pricing</a></li>
+                <li><a href="/procurement-faq" className="text-sm hover:text-white transition-colors">FAQs</a></li>
               </ul>
             </div>
 
@@ -498,13 +498,11 @@ export default function TitanFleetLandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-3">
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Our Story</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Our Principles</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">No Lock-In</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Why Not Us</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Sales Presentation</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Affiliate</a></li>
-                <li><a href="#" className="text-sm hover:text-white transition-colors">Contact</a></li>
+                <li><a href="#founder" className="text-sm hover:text-white transition-colors" onClick={(e) => { e.preventDefault(); document.getElementById("founder")?.scrollIntoView({ behavior: "smooth" }); }}>Our Story</a></li>
+                <li><a href="#features" className="text-sm hover:text-white transition-colors" onClick={(e) => { e.preventDefault(); document.getElementById("features")?.scrollIntoView({ behavior: "smooth" }); }}>Our Principles</a></li>
+                <li><a href="#pricing" className="text-sm hover:text-white transition-colors" onClick={(e) => { e.preventDefault(); document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); }}>No Lock-In</a></li>
+                <li><a href="/demo" className="text-sm hover:text-white transition-colors">View Demo</a></li>
+                <li><a href="mailto:support@titanfleet.co.uk" className="text-sm hover:text-white transition-colors">Contact</a></li>
               </ul>
             </div>
 
@@ -519,13 +517,9 @@ export default function TitanFleetLandingPage() {
 
           <div className="pt-8 border-t border-slate-800 text-center space-y-4">
             <div className="flex justify-center gap-6 text-sm">
-              <Link href="/privacy">
-                <span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
-              </Link>
-              <Link href="/terms">
-                <span className="hover:text-white transition-colors cursor-pointer">Terms & Conditions</span>
-              </Link>
-              <a href="#" className="hover:text-white transition-colors">Refund Policy</a>
+              <a href="mailto:support@titanfleet.co.uk?subject=Privacy%20Policy" className="hover:text-white transition-colors cursor-pointer">Privacy Policy</a>
+              <a href="mailto:support@titanfleet.co.uk?subject=Terms%20%26%20Conditions" className="hover:text-white transition-colors cursor-pointer">Terms & Conditions</a>
+              <a href="mailto:support@titanfleet.co.uk?subject=Refund%20Policy" className="hover:text-white transition-colors">Refund Policy</a>
             </div>
             <p className="text-sm text-slate-400">
               &copy; 2026 <span className="text-white font-medium">Titan</span> Fleet. All rights reserved.
